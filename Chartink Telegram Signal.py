@@ -22,7 +22,7 @@ import os
 import urllib.parse
 
 # ----------------- CONFIG (edit these directly) -----------------
-SIGNAL_AMOUNT = os.getenv("SIGNAL_AMOUNT")
+SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT", "70"))
 
 cookie_str= os.getenv("CHARTINK_COOKIE")
 CHARTINK_CSRF_TOKEN= os.getenv("CHARTINK_CSRF_TOKEN")
