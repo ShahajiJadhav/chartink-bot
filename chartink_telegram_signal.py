@@ -44,7 +44,7 @@ LOG_FILE = HOME / 'stock_bot.txt'  # per your requested filename
 
 # notify-until (15:15 IST)
 INDIA_TZ = pytz.timezone('Asia/Kolkata')
-NOTIFY_UNTIL = dtime(hour=23, minute=59)
+NOTIFY_UNTIL = dtime(hour=15, minute=15)
 
 def parse_cookie_string_to_dict(cookie_string):
     cookies_dict = {}
