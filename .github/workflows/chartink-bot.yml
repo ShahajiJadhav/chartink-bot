@@ -1,19 +1,19 @@
 name: Chartink Bot (Market Session)
 
 on:
-  # Manual trigger (Run workflow button)
+  # Manual trigger for testing
   workflow_dispatch:
 
-  # Automatic run on market days
+  # Scheduled trigger (UTC time)
   # 09:20 IST = 03:50 UTC
   schedule:
-    - cron: "04 2 * * 1-5"
+    - cron: "50 2 * * 1-5"
 
 jobs:
   run:
     runs-on: ubuntu-latest
 
-    # HARD GitHub limit = 6 hours
+    # GitHub hard limit = 6 hours
     timeout-minutes: 360
 
     steps:
@@ -39,9 +39,11 @@ jobs:
           # Telegram
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+          # Bot config
           SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
 
-          # Ensure realtime logs
+          # Ensure realtime logging
           PYTHONUNBUFFERED: "1"
 
         run: |
