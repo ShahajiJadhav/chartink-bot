@@ -44,4 +44,4 @@ jobs:
           PYTHONUNBUFFERED: "1"
 
         run: |
-          Chartink Telegram Signal.py
+          python chartink_telegram_signal.py
