@@ -41,7 +41,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
           # Bot config
-          # SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
+          SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
 
           # Ensure realtime logging
           PYTHONUNBUFFERED: "1"
