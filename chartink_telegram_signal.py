@@ -18,7 +18,8 @@ import logging
 import sys
 import random
 import os
-
+from dotenv import load_dotenv
+load_dotenv()
 # ---------------- CONFIG ----------------
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT", "70"))
 LEVERAGE = 5
@@ -188,7 +189,7 @@ def send_telegram(msg):
 # ---------------- MAIN LOOP ----------------
 def main_loop():
     log("[main] starting loop")
-    notified = load_cache()
+    notified = load_cache()  # key -> utc datetime
 
     while True:
         now_ist = datetime.now(INDIA_TZ)
@@ -196,81 +197,84 @@ def main_loop():
             log("[main] notify-until reached")
             break
 
-        # ---------------- per-cycle dedupe ----------------
-        seen_keys = set()
+        now_utc = datetime.now(pytz.utc)
 
-        # ---------------- expire old cache (20 min) ----------------
-        cutoff = datetime.now(pytz.utc) - timedelta(minutes=20)
-        notified = {k: v for k, v in notified.items() if v >= cutoff}
+        # ---------------- expire old cache (20 min TTL) ----------------
+        ttl_cutoff = now_utc - timedelta(minutes=20)
+        notified = {k: v for k, v in notified.items() if v >= ttl_cutoff}
 
         # ---------------- fetch signals ----------------
-        buy      = fetch_chartink_signals("BUY",  buy_payload)
-        sell     = fetch_chartink_signals("SELL", sell_payload)
-        hm_buy   = fetch_chartink_signals("BUY",  buy_hammer_payload)
-        hm_sell  = fetch_chartink_signals("SELL", sell_hammer_payload)
+        vol_buy   = fetch_chartink_signals("BUY",  buy_payload)
+        vol_sell  = fetch_chartink_signals("SELL", sell_payload)
+        ham_buy   = fetch_chartink_signals("BUY",  buy_hammer_payload)
+        ham_sell  = fetch_chartink_signals("SELL", sell_hammer_payload)
 
-        buy_msgs, sell_msgs = [], []
-        hm_buy_msgs, hm_sell_msgs = [], []
+        # ---------------- containers ----------------
+        volume_msgs = {"BUY": [], "SELL": []}
+        hammer_msgs = {"BUY": [], "SELL": []}
 
-        buy_sell_keys, hm_keys = [], []
+        volume_keys = []
+        hammer_keys = []
+
+        seen_cycle = set()  # per-cycle hard dedupe
 
         # ===================== VOLUME =====================
-        for s in buy + sell:
-            key = f"{s['symbol']}|TSI|{s['side']}"
+        for s in vol_buy + vol_sell:
+            key = f"{s['symbol']}|VOLUME|{s['side']}"
 
-            # 🔥 FIX: prevent duplicate volume alerts
-            if key in notified or key in seen_keys:
+            if key in notified or key in seen_cycle:
                 continue
 
-            seen_keys.add(key)
+            seen_cycle.add(key)
 
-            qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // s["close"]))
-            msg = f"<b>{s['symbol']}</b> Qty={qty}"
+            close = s["close"]
+            qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // close))
 
-            (buy_msgs if s["side"] == "BUY" else sell_msgs).append(msg)
-            buy_sell_keys.append(key)
+            volume_msgs[s["side"]].append(
+                f"<b>{s['symbol']}</b> Qty={qty}"
+            )
+            volume_keys.append(key)
 
         # ===================== HAMMER =====================
-        for s in hm_buy + hm_sell:
+        for s in ham_buy + ham_sell:
             key = f"{s['symbol']}|HAMMER|{s['side']}"
 
-            # 🔥 FIX: prevent duplicate hammer alerts
-            if key in notified or key in seen_keys:
+            if key in notified or key in seen_cycle:
                 continue
 
-            seen_keys.add(key)
+            seen_cycle.add(key)
 
-            qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // s["close"]))
-            msg = f"<b>{s['symbol']}</b> Qty={qty}"
+            close = s["close"]
+            qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // close))
 
-            (hm_buy_msgs if s["side"] == "BUY" else hm_sell_msgs).append(msg)
-            hm_keys.append(key)
+            hammer_msgs[s["side"]].append(
+                f"<b>{s['symbol']}</b> Qty={qty}"
+            )
+            hammer_keys.append(key)
 
         # ---------------- send volume alerts ----------------
-        if buy_msgs or sell_msgs:
+        if volume_msgs["BUY"] or volume_msgs["SELL"]:
             parts = []
-            if buy_msgs:
-                parts.append("🟢 <u>Volume BUY</u>\n" + "\n".join(buy_msgs))
-            if sell_msgs:
-                parts.append("🔴 <u>Volume SELL</u>\n" + "\n".join(sell_msgs))
+            if volume_msgs["BUY"]:
+                parts.append("🟢 <u>VOLUME BUY</u>\n" + "\n".join(volume_msgs["BUY"]))
+            if volume_msgs["SELL"]:
+                parts.append("🔴 <u>VOLUME SELL</u>\n" + "\n".join(volume_msgs["SELL"]))
 
             if send_telegram("\n\n".join(parts)):
-                now = datetime.now(pytz.utc)
-                for k in buy_sell_keys:
-                    notified[k] = now
+                for k in volume_keys:
+                    notified[k] = now_utc
 
         # ---------------- send hammer alerts ----------------
-        if hm_buy_msgs or hm_sell_msgs:
+        if hammer_msgs["BUY"] or hammer_msgs["SELL"]:
             parts = []
-            if hm_buy_msgs:
-                parts.append("🔨 <u>HAMMER BUY</u>\n" + "\n".join(hm_buy_msgs))
-            if hm_sell_msgs:
-                parts.append("🔨 <u>HAMMER SELL</u>\n" + "\n".join(hm_sell_msgs))
+            if hammer_msgs["BUY"]:
+                parts.append("🔨 <u>HAMMER BUY</u>\n" + "\n".join(hammer_msgs["BUY"]))
+            if hammer_msgs["SELL"]:
+                parts.append("🔨 <u>HAMMER SELL</u>\n" + "\n".join(hammer_msgs["SELL"]))
 
             if send_telegram("\n\n".join(parts)):
-                now = datetime.now(pytz.utc)
-                for k in hm_keys:
-                    notified[k] = now
+                for k in hammer_keys:
+                    notified[k] = now_utc
 
         save_cache(notified)
         time.sleep(min(random.uniform(8, 12), POLL_INTERVAL_S))
