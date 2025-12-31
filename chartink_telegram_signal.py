@@ -147,7 +147,7 @@ def fetch_chartink_signals(side, payload):
             if not sym or close <= 0:
                 continue
 
-            qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // close))
+            qty = int((SIGNAL_AMOUNT * LEVERAGE) // close)
 
             signal_logger.info(f"{side} {sym} Qty={qty}")
             out.append({"symbol": sym, "side": side, "close": close})
