@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 PythonAnywhere-friendly Chartink scanner
-- TSI + HAMMER strategies
+- buy_sell + HAMMER strategies
 - IST logging to file + stdout
 - Separate raw signal log
 - Telegram alerts with dedupe
@@ -18,7 +18,8 @@ import logging
 import sys
 import random
 import os
-
+from dotenv import load_dotenv
+load_dotenv()
 # ---------------- CONFIG ----------------
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT", "70"))
 LEVERAGE = 5
@@ -196,34 +197,49 @@ def main_loop():
             log("[main] notify-until reached")
             break
 
+        # ---------------- per-cycle dedupe ----------------
+        seen_keys = set()
+
+        # ---------------- expire old cache (20 min) ----------------
         cutoff = datetime.now(pytz.utc) - timedelta(minutes=20)
         notified = {k: v for k, v in notified.items() if v >= cutoff}
 
-        tsi_buy = fetch_chartink_signals("BUY", buy_payload)
-        tsi_sell = fetch_chartink_signals("SELL", sell_payload)
-        hm_buy = fetch_chartink_signals("BUY", buy_hammer_payload)
-        hm_sell = fetch_chartink_signals("SELL", sell_hammer_payload)
+        # ---------------- fetch signals ----------------
+        buy      = fetch_chartink_signals("BUY",  buy_payload)
+        sell     = fetch_chartink_signals("SELL", sell_payload)
+        hm_buy   = fetch_chartink_signals("BUY",  buy_hammer_payload)
+        hm_sell  = fetch_chartink_signals("SELL", sell_hammer_payload)
 
-        tsi_buy_msgs, tsi_sell_msgs = [], []
+        buy_msgs, sell_msgs = [], []
         hm_buy_msgs, hm_sell_msgs = [], []
 
-        tsi_keys, hm_keys = [], []
+        buy_sell_keys, hm_keys = [], []
 
-        for s in tsi_buy + tsi_sell:
+        # ===================== VOLUME =====================
+        for s in buy + sell:
             key = f"{s['symbol']}|TSI|{s['side']}"
-            if key in notified:
+
+            # 🔥 FIX: prevent duplicate volume alerts
+            if key in notified or key in seen_keys:
                 continue
+
+            seen_keys.add(key)
 
             qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // s["close"]))
             msg = f"<b>{s['symbol']}</b> Qty={qty}"
 
-            (tsi_buy_msgs if s["side"] == "BUY" else tsi_sell_msgs).append(msg)
-            tsi_keys.append(key)
+            (buy_msgs if s["side"] == "BUY" else sell_msgs).append(msg)
+            buy_sell_keys.append(key)
 
+        # ===================== HAMMER =====================
         for s in hm_buy + hm_sell:
             key = f"{s['symbol']}|HAMMER|{s['side']}"
-            if key in notified:
+
+            # 🔥 FIX: prevent duplicate hammer alerts
+            if key in notified or key in seen_keys:
                 continue
+
+            seen_keys.add(key)
 
             qty = max(MIN_QTY, int((SIGNAL_AMOUNT * LEVERAGE) // s["close"]))
             msg = f"<b>{s['symbol']}</b> Qty={qty}"
@@ -231,18 +247,20 @@ def main_loop():
             (hm_buy_msgs if s["side"] == "BUY" else hm_sell_msgs).append(msg)
             hm_keys.append(key)
 
-        if tsi_buy_msgs or tsi_sell_msgs:
+        # ---------------- send volume alerts ----------------
+        if buy_msgs or sell_msgs:
             parts = []
-            if tsi_buy_msgs:
-                parts.append("🟢 <u>Volume BUY</u>\n" + "\n".join(tsi_buy_msgs))
-            if tsi_sell_msgs:
-                parts.append("🔴 <u>Volume SELL</u>\n" + "\n".join(tsi_sell_msgs))
+            if buy_msgs:
+                parts.append("🟢 <u>Volume BUY</u>\n" + "\n".join(buy_msgs))
+            if sell_msgs:
+                parts.append("🔴 <u>Volume SELL</u>\n" + "\n".join(sell_msgs))
 
             if send_telegram("\n\n".join(parts)):
                 now = datetime.now(pytz.utc)
-                for k in tsi_keys:
+                for k in buy_sell_keys:
                     notified[k] = now
 
+        # ---------------- send hammer alerts ----------------
         if hm_buy_msgs or hm_sell_msgs:
             parts = []
             if hm_buy_msgs:
@@ -256,7 +274,6 @@ def main_loop():
                     notified[k] = now
 
         save_cache(notified)
-
         time.sleep(min(random.uniform(8, 12), POLL_INTERVAL_S))
 
     save_cache(notified)
