@@ -20,7 +20,7 @@ import random
 import os
 
 # ---------------- CONFIG ----------------
-SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT", "70"))
+SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
 LEVERAGE = 5
 MIN_QTY = 1
 
