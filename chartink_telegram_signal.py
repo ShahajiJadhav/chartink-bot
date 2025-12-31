@@ -18,8 +18,7 @@ import logging
 import sys
 import random
 import os
-from dotenv import load_dotenv
-load_dotenv()
+
 # ---------------- CONFIG ----------------
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT", "70"))
 LEVERAGE = 5
