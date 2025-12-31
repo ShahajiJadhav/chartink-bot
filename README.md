@@ -2,9 +2,13 @@ I have created a chartink scanner and sent a telegram notification on condition 
 Below are the scanner lists which is used for scan.
 
 Please respect privacy policy of chartink.
+
 Buy Volume- https://chartink.com/screener/buy-volume-20000223   (identify consolidation before entry)
+
 Sell Volume- https://chartink.com/screener/sell-volume-1000084  (identify consolidation before entry)
+
 Buy Hammer- https://chartink.com/screener/buy-hammer-120
+
 Sell Hammer- https://chartink.com/screener/sell-hammer-64
 
 Hit like/love button if you like the scanner result and subscribe chartink premium if you want to get realtime alert. Free version will result in getting alert 5 minute late upon condition met. 
