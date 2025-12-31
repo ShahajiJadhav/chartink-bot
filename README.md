@@ -17,4 +17,4 @@ Before use of scanner, understand a bit how the chartink works, how result get d
 Please note market is the boss, not you.  
 
 I used my own watchlist for stock filteration and that id is present in the code scanner.
-I do not want to give all the details used in the code. Please clone it and run it/debug it. You shall get the understanging upon usage.
+I do not want to give all the details used in the code. Please clone it and run it/debug it.
