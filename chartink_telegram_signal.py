@@ -48,7 +48,7 @@ LOG_FILE = HOME / "stock_bot.log"
 SIGNAL_LOG_FILE = HOME / "signals.log"
 
 INDIA_TZ = pytz.timezone("Asia/Kolkata")
-NOTIFY_UNTIL = dtime(hour=23, minute=15)
+NOTIFY_UNTIL = dtime(hour=15, minute=15)
 
 # ===================== LOGGING =====================
 def ist_time(*_):
