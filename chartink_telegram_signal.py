@@ -152,7 +152,8 @@ def fetch_chartink_signals(side, payload):
             signal_logger.info(f"{side} {sym} Qty={qty}")
             out.append({"symbol": sym, "side": side, "close": close})
 
-        log(f"[chartink {side}] fetch success - {len(out)}")
+        # log(f"[chartink {side}] fetch success - {len(out)}")
+        log(out)
         return out
 
     except Exception as e:
