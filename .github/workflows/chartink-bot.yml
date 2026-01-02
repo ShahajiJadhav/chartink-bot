@@ -7,7 +7,7 @@ on:
   # Scheduled trigger (UTC time)
   # 09:20 IST = 03:50 UTC
   schedule:
-    - cron: "55 3 * * 1-5"
+    - cron: "35 3 * * 1-5"
 
 jobs:
   run:
