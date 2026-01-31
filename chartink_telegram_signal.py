@@ -191,7 +191,7 @@ def main():
     cache = load_cache()
 
     while datetime.now(INDIA_TZ).time() < NOTIFY_UNTIL:
-        cutoff = datetime.now(pytz.utc) - timedelta(minutes=20)
+        cutoff = datetime.now(pytz.utc) - timedelta(minutes=10)
         cache = {k: v for k, v in cache.items() if v >= cutoff}
 
         signals = (
