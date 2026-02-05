@@ -186,16 +186,33 @@ def send_telegram(msg: str):
         log(f"[telegram] failed: {e}")
         return False
 
-def send_github_notification(msg: str):
+def create_github_issue(msg):
     try:
-        actor = os.getenv("GITHUB_ACTOR")
-        if actor:
-            print(f"@{actor} {msg}")
-            return True
-        return False
+        token = os.getenv("GITHUB_TOKEN")
+        repo = os.getenv("GITHUB_REPOSITORY")
+
+        if not token or not repo:
+            return False
+
+        url = f"https://api.github.com/repos/{repo}/issues"
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json"
+        }
+
+        data = {
+            "title": "🚨 Chartink Signal Alert",
+            "body": msg
+        }
+
+        requests.post(url, headers=headers, json=data)
+        return True
+
     except Exception as e:
-        log(f"[github notify] failed: {e}")
+        log(f"[github issue] failed: {e}")
         return False
+
 
 # ===================== MAIN LOOP =====================
 def main():
@@ -232,7 +249,7 @@ def main():
             final_msg = msg.strip()
 
             sent = send_telegram(final_msg)
-            send_github_notification(final_msg)
+            create_github_issue(final_msg)
             
             if sent:
                 now = datetime.now(pytz.utc)
