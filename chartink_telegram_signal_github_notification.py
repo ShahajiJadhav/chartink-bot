@@ -185,6 +185,17 @@ def send_telegram(msg: str):
         log(f"[telegram] failed: {e}")
         return False
 
+def send_github_notification(msg: str):
+    try:
+        actor = os.getenv("GITHUB_ACTOR")
+        if actor:
+            print(f"@{actor} {msg}")
+            return True
+        return False
+    except Exception as e:
+        log(f"[github notify] failed: {e}")
+        return False
+
 # ===================== MAIN LOOP =====================
 def main():
     log("[main] started")
@@ -217,8 +228,12 @@ def main():
                 msg += "\n🟢 Buy\n" + "\n".join(buy)
             if sell:
                 msg += "\n🔴 Sell\n" + "\n".join(sell)
+            final_msg = msg.strip()
 
-            if send_telegram(msg.strip()):
+            sent = send_telegram(final_msg)
+            send_github_notification(final_msg)
+            
+            if sent:
                 now = datetime.now(pytz.utc)
                 for k in keys:
                     cache[k] = now
