@@ -48,4 +48,4 @@ jobs:
 
         run: |
           # python chartink_telegram_signal.py
-          chartink_telegram_signal_github_notification.py
+          python chartink_telegram_signal_github_notification.py
