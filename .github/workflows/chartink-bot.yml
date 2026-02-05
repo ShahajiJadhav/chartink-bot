@@ -47,4 +47,5 @@ jobs:
           PYTHONUNBUFFERED: "1"
 
         run: |
-          python chartink_telegram_signal.py
+          # python chartink_telegram_signal.py
+          chartink_telegram_signal_github_notification.py
