@@ -2,12 +2,15 @@ name: Chartink Bot (Market Session)
 
 on:
   workflow_dispatch:
+  # schedule:
+  #   - cron: "13 3 * * 1-5"   # 09:20 IST (optional)
 
 jobs:
   run-bots:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
+    # All secrets defined once here
     env:
       CHARTINK_COOKIE: ${{ secrets.CHARTINK_COOKIE }}
       CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
@@ -20,21 +23,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show repo files (DEBUG)
+      # Optional but VERY useful for debugging paths
+      - name: Show repo files
         run: ls -R
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests pytz
 
-      - name: Run Chartink bots
+      - name: Run Chartink bots (parallel)
         run: |
           echo "Starting Scanner Bot..."
           python ./chartink_telegram_signal_1_scanners.py &
