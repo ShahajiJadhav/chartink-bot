@@ -1,20 +1,29 @@
 name: Chartink Bot (Market Session)
 
 on:
-  # Manual trigger for testing
   workflow_dispatch:
-
-  # Scheduled trigger (UTC time)
-  # 09:20 IST = 03:50 UTC
   # schedule:
-    # - cron: "13 3 * * 1-5"
+  #   - cron: "13 3 * * 1-5"   # 09:20 IST
 
 jobs:
-  run:
+  run-bots:
     runs-on: ubuntu-latest
-
-    # GitHub hard limit = 6 hours
     timeout-minutes: 360
+
+    env:
+      # Chartink
+      CHARTINK_COOKIE: ${{ secrets.CHARTINK_COOKIE }}
+      CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
+
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      # Bot config
+      SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
+
+      # Realtime logging
+      PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Checkout repository
@@ -24,28 +33,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests pytz
 
-      - name: Run Chartink bot
-        env:
-          # Chartink
-          CHARTINK_COOKIE: ${{ secrets.CHARTINK_COOKIE }}
-          CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
-
-          # Telegram
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
-          # Bot config
-          SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
-
-          # Ensure realtime logging
-          PYTHONUNBUFFERED: "1"
-
+      - name: Run Chartink bots (parallel)
         run: |
-          python chartink_telegram_signal_1_scanners.py
-          
+          echo "Starting Scanner Bot..."
+          python chartink_telegram_signal_1_scanners.py &
+
+          echo "Starting Main Bot..."
+          python chartink_telegram_signal.py &
+
+          wait
