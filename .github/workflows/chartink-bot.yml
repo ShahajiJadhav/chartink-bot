@@ -2,8 +2,6 @@ name: Chartink Bot (Market Session)
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: "13 3 * * 1-5"   # 09:20 IST
 
 jobs:
   run-bots:
@@ -11,23 +9,19 @@ jobs:
     timeout-minutes: 360
 
     env:
-      # Chartink
       CHARTINK_COOKIE: ${{ secrets.CHARTINK_COOKIE }}
       CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
-
-      # Telegram
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
-      # Bot config
       SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
-
-      # Realtime logging
       PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Show repo files (DEBUG)
+        run: ls -R
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -40,12 +34,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pytz
 
-      - name: Run Chartink bots (parallel)
+      - name: Run Chartink bots
         run: |
           echo "Starting Scanner Bot..."
-          python chartink_telegram_signal_1_scanners.py &
+          python ./chartink_telegram_signal_1_scanners.py &
 
           echo "Starting Main Bot..."
-          python chartink_telegram_signal.py &
+          python ./chartink_telegram_signal.py &
 
           wait
