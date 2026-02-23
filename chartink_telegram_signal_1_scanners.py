@@ -210,7 +210,7 @@ def fetch_chartink_signals(payload):
 
             signal_logger.info(msg)
             print(msg)
-            out.append({"symbol": sym, "close": close})
+            out.append({"symbol": sym, "close": close, "Traded":Traded})
         return out
 
     except Exception as e:
@@ -245,7 +245,7 @@ def main_loop():
                     continue
 
                 qty = int((SIGNAL_AMOUNT * 5) // s["close"])
-                msgs.append(f"<b>{s['symbol']}</b> Qty={qty}")
+                msgs.append(f"<b>{s['symbol']}</b> Qty={qty} Traded={s['Traded']}")
                 new_keys.append(key)
 
             if msgs:
