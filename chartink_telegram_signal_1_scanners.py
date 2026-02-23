@@ -200,12 +200,13 @@ def fetch_chartink_signals(payload):
         for d in data.get("data", []):
             sym = (d.get("nsecode") or "").upper().strip()
             close = float(d.get("close", 0) or 0)
-
+            volume = float(d.get("volume", 0) or 0)
             if not sym or close <= 0:
                 continue
 
             qty = int((SIGNAL_AMOUNT * 5) // close)
-            msg = f"SIGNAL {sym} Qty={qty}"
+            Traded = round((volume * close)/10000000,2)
+            msg = f"SIGNAL {sym} Qty={qty}  Traded={Traded}"
 
             signal_logger.info(msg)
             print(msg)
