@@ -40,7 +40,7 @@ EXCLUDED_SYMBOLS = {
 
 def fetch_and_build_list():
     global ID_TO_SYMBOL, SIDS_LIST
-    print("⬇️ Fetching live instrument master...")
+    print("⬇️ [1/3] Fetching Master Instrument List...")
     
     headers = {
         'access-token': DHAN_ACCESS_TOKEN, 
@@ -49,22 +49,24 @@ def fetch_and_build_list():
     }
     
     try:
-        resp = requests.get("https://api.dhan.co/v2/instrument/NSE_EQ", headers=headers)
+        # 1. Get Master List
+        resp = requests.get("https://api.dhan.co/v2/instrument/NSE_EQ", headers=headers, timeout=30)
         inst_df = pd.read_csv(StringIO(resp.text))
-        inst_df = inst_df[(inst_df["EXCH_ID"] == "NSE") & (inst_df["SEGMENT"] == "E") & (inst_df["INSTRUMENT_TYPE"] == "ES")]
+        inst_df = inst_df[(inst_df["EXCH_ID"] == "NSE") & (inst_df["SEGMENT"] == "E")]
         inst_df = inst_df[["SECURITY_ID", "UNDERLYING_SYMBOL"]].rename(columns={"UNDERLYING_SYMBOL": "Symbol"})
         inst_df["Symbol"] = inst_df["Symbol"].str.upper().str.strip()
 
-        print("⬇️ Fetching leverage data...")
+        print("⬇️ [2/3] Fetching Leverage & Filtering...")
         sheet_url = "https://docs.google.com/spreadsheets/d/1zqhM3geRNW_ZzEx62y0W5U2ZlaXxG-NDn0V8sJk5TQ4/gviz/tq?tqx=out:csv&gid=1663719548"
         lev_df = pd.read_csv(sheet_url)
         
+        # Identify Symbol column dynamically
         symbol_col = lev_df.columns[list(lev_df.columns).index("Sr.") + 1]
         lev_df = lev_df.rename(columns={symbol_col: "Symbol"})
         lev_df["Symbol"] = lev_df["Symbol"].astype(str).str.upper().str.strip()
         lev_df["MIS"] = pd.to_numeric(lev_df["MIS (Intraday)"].astype(str).str.replace("x","",regex=False).str.replace("X","",regex=False), errors="coerce")
         
-        # Fixed Regex Warning here
+        # Apply Filters
         mis_df = lev_df[lev_df["MIS"] >= 5][["Symbol", "MIS"]].copy()
         mis_df = mis_df[~mis_df["Symbol"].str.contains(r"BEES|ETF|CASE", case=False, na=False)]
         mis_df = mis_df[~mis_df["Symbol"].isin(EXCLUDED_SYMBOLS)]
@@ -73,34 +75,45 @@ def fetch_and_build_list():
         potential_sids = final_df["SECURITY_ID"].tolist()
         sid_to_symbol_map = dict(zip(final_df['SECURITY_ID'], final_df['Symbol']))
 
-        print(f"🔍 Checking prices for {len(potential_sids)} candidates. This may take a minute...")
+        print(f"🔍 [3/3] Checking LTP for {len(potential_sids)} candidates...")
         filtered_data = []
         quote_url = "https://api.dhan.co/v2/marketfeed/ltp"
         
+        # Dhan allows up to 1000 SIDs per request. 
+        # We chunk them to minimize the number of API calls.
         for i in range(0, len(potential_sids), 1000):
             chunk = potential_sids[i:i+1000]
-            q_resp = requests.post(quote_url, headers=headers, json={"NSE_EQ": chunk}, timeout=15)
+            print(f"   > Requesting batch {i//1000 + 1} ({len(chunk)} stocks)...")
+            
+            q_resp = requests.post(quote_url, headers=headers, json={"NSE_EQ": chunk}, timeout=20)
+            
             if q_resp.status_code == 200:
-                market_data = q_resp.json().get('data', {}).get('NSE_EQ', {})
-                for sid_key, details in market_data.items():
+                data = q_resp.json().get('data', {}).get('NSE_EQ', {})
+                for sid_str, details in data.items():
                     ltp = details.get('last_price', 0)
                     if 5 <= ltp <= 1500:
-                        sid_int = int(sid_key)
-                        filtered_data.append({"SECURITY_ID": sid_int, "Symbol": sid_to_symbol_map.get(sid_int, "Unknown")})
+                        sid_int = int(sid_str)
+                        filtered_data.append({
+                            "SECURITY_ID": sid_int, 
+                            "Symbol": sid_to_symbol_map.get(sid_int, "Unknown")
+                        })
+            else:
+                print(f"   ⚠️ Batch failed. Status: {q_resp.status_code}")
             
-            print(f"   Progress: {min(i+1000, len(potential_sids))}/{len(potential_sids)} checked.")
-            time.sleep(1.2) 
+            # Rate limit compliance: 1 request per second
+            if i + 1000 < len(potential_sids):
+                time.sleep(1.5) 
 
         if filtered_data:
             valid_df = pd.DataFrame(filtered_data)
             ID_TO_SYMBOL = pd.Series(valid_df.Symbol.values, index=valid_df.SECURITY_ID).to_dict()
             SIDS_LIST = valid_df["SECURITY_ID"].astype(str).tolist()
-            print(f"✅ Subscribing to {len(SIDS_LIST)} stocks.")
+            print(f"✅ Setup Complete: Monitoring {len(SIDS_LIST)} stocks.")
         else:
-            print("❌ No stocks found.")
+            print("❌ No stocks matched the price criteria (5-1500).")
 
     except Exception as e:
-        print(f"❌ Critical Error in Setup: {e}")
+        print(f"❌ Critical error during list build: {e}")
 
 # ... (Rest of your process_volume, on_message, and run_ws functions remain the same) ...
 
