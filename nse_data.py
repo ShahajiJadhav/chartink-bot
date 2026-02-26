@@ -1,30 +1,30 @@
-import os, json, struct, requests, time, threading
+import os, json, struct, requests, time, threading, sys
 from collections import deque
 import pandas as pd
 from io import StringIO
 import websocket
+from datetime import datetime
+import pytz
 
-# Configuration from Environment Variables (GitHub Secrets / .env)
+# --- CONFIG ---
 DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+IST = pytz.timezone("Asia/Kolkata")
 
-# Parameters
+# --- PARAMETERS ---
 VOL_5MIN_THRESHOLD_CR = 40.0
 COOLDOWN_SECONDS = 300 
 CR_UNIT = 10_000_000
+EXIT_TIME = "15:25" # 3:25 PM IST
 
-# State
-volume_history = {} # {sid: deque([(ts, vol), ...])}
+# --- STATE ---
+volume_history = {} 
 ID_TO_SYMBOL = {}
 SIDS_LIST = []
 alert_cooldowns = {}
 
-
-# ============================================================= #
-#                INSTRUMENT FETCH & FILTERING                   #
-# ============================================================= #
 EXCLUDED_SYMBOLS = {
     "M&M","BEL","JISLJALEQS","ABCAPITAL","HDFCLIFE","NSLNISP","ASIANPAINT","HEROMOTOCO",
     "NATIONALUM","NMDC","SAMMAANCAP","NESTLEIND","IDBI","JIOFIN","GAEL","ITC","FMCGIETF",
@@ -131,7 +131,6 @@ def fetch_and_build_list():
         print("❌ No stocks found meeting the criteria.")
         ID_TO_SYMBOL = {}
         SIDS_LIST = []
-      
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -139,14 +138,21 @@ def send_telegram(msg):
     except: pass
 
 def process_volume(sec_id, ltp, cum_vol):
-    now = time.time()
+    # 1. TIME CHECK (3:25 PM IST Cutoff)
+    now_ist = datetime.now(IST)
+    if now_ist.strftime("%H:%M") >= EXIT_TIME:
+        print(f"⏰ Market Close Cutoff Reached ({EXIT_TIME}). Exiting...")
+        os._exit(0) # Force exit all threads
+
+    now_ts = time.time()
     if sec_id not in volume_history:
         volume_history[sec_id] = deque()
     
-    volume_history[sec_id].append((now, cum_vol))
+    volume_history[sec_id].append((now_ts, cum_vol))
     
-    # Logic: Keep only 5-minute window
-    while volume_history[sec_id] and (now - volume_history[sec_id][0][0] > 300):
+    # 2. SLIDING WINDOW LOGIC
+    # Keep only the last 300 seconds (5 minutes) of data
+    while volume_history[sec_id] and (now_ts - volume_history[sec_id][0][0] > 300):
         volume_history[sec_id].popleft()
     
     if len(volume_history[sec_id]) > 1:
@@ -154,8 +160,8 @@ def process_volume(sec_id, ltp, cum_vol):
         value_cr = (traded_qty * ltp) / CR_UNIT
         
         if value_cr >= VOL_5MIN_THRESHOLD_CR:
-            if now - alert_cooldowns.get(sec_id, 0) > COOLDOWN_SECONDS:
-                alert_cooldowns[sec_id] = now
+            if now_ts - alert_cooldowns.get(sec_id, 0) > COOLDOWN_SECONDS:
+                alert_cooldowns[sec_id] = now_ts
                 sym = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
                 msg = f"🚀 *VOL BREAKOUT: {sym}*\n💰 Value: ₹{value_cr:.2f} Cr\n📈 Price: {ltp}"
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
@@ -163,7 +169,6 @@ def process_volume(sec_id, ltp, cum_vol):
 def on_message(ws, message):
     if isinstance(message, bytes) and message[0] == 8:
         try:
-            # Binary Unpacking for Ticker Packet (Feed 8)
             sec_id = struct.unpack('<I', message[4:8])[0]
             ltp = round(struct.unpack('<f', message[8:12])[0], 2)
             cum_vol = struct.unpack('<I', message[24:28])[0]
@@ -173,11 +178,15 @@ def on_message(ws, message):
 def run_ws():
     url = f"wss://api-feed.dhan.co?version=2&token={DHAN_ACCESS_TOKEN}&clientId={DHAN_CLIENT_ID}&authType=2"
     def on_open(ws):
+        print("🌐 WebSocket Connected. Subscribing...")
         for i in range(0, len(SIDS_LIST), 100):
             chunk = SIDS_LIST[i:i+100]
             ws.send(json.dumps({"RequestCode": 21, "InstrumentCount": len(chunk), "InstrumentList": [{"ExchangeSegment": "NSE_EQ", "SecurityId": s} for s in chunk]}))
-    websocket.WebSocketApp(url, on_message=on_message, on_open=on_open).run_forever()
+    
+    ws_app = websocket.WebSocketApp(url, on_message=on_message, on_open=on_open)
+    ws_app.run_forever()
 
 if __name__ == "__main__":
     fetch_and_build_list()
-    if SIDS_LIST: run_ws()
+    if SIDS_LIST: 
+        run_ws()
