@@ -1,0 +1,29 @@
+name: Dhan Volume Tracker
+
+on:
+  schedule:
+    - cron: '30 3 * * 1-5' # Runs at 9:00 AM IST (3:30 AM UTC), Mon-Fri
+  workflow_dispatch:      # Allows manual start
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: fschuh/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install pandas requests websocket-client pytz
+
+      - name: Run Tracker
+        env:
+          DHAN_CLIENT_ID: ${{ secrets.DHAN_CLIENT_ID }}
+          DHAN_ACCESS_TOKEN: ${{ secrets.DHAN_ACCESS_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python nse_data.py
