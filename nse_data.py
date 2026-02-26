@@ -224,10 +224,10 @@ def process_volume(sec_id, ltp, cum_vol):
                 alert_cooldowns[sec_id] = now
                 symbol = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
                 
-                msg = (f"🔥 *VOLUME SPIKE: {symbol}*\n"
+                msg = (f"VOLUME SPIKE: {symbol}, "
                        f"Value: ₹{traded_value_cr:.2f} Cr (Last 5m)\n"
-                       f"Price: ₹{ltp} QTY: { (SIGNAL_AMOUNT/ltp} \n"
-                       f"Delta Qty: {delta_qty/1000000 }M shares")
+                       f"Price: ₹{ltp} QTY: {int(Balance/ltp)} \n"
+                       f"Delta Qty: {delta_qty/1000000}M shares")
                 print(msg)
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
 
