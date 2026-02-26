@@ -1,18 +1,10 @@
-import os, asyncio, pytz, threading, json, websocket, struct, requests, time, re, pandas as pd, platform
+import os, asyncio, pytz, threading, json, websocket, struct, requests, time, re, pandas as pd
 from io import StringIO
 from collections import deque
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# Prevent sleep (Windows only)
-if platform.system() == "Windows":
-    import ctypes
-    ES_CONTINUOUS = 0x80000000
-    ES_SYSTEM_REQUIRED = 0x00000001
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
-
 
 # --- CONFIG ---
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
