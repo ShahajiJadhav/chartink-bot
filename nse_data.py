@@ -226,7 +226,7 @@ def process_volume(sec_id, ltp, cum_vol):
                 
                 msg = (f"VOLUME SPIKE: {symbol}, "
                        f"Value: ₹{traded_value_cr:.2f} Cr (Last 5m)\n"
-                       f"Price: ₹{ltp} QTY: {int(Balance/ltp)} \n"
+                       f"Price: ₹{ltp} QTY: {int(SIGNAL_AMOUNT/ltp)} \n"
                        f"Delta Qty: {delta_qty/1000000}M shares")
                 print(msg)
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
