@@ -10,15 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: fschuh/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+          cache: 'pip' # Speeds up future runs by caching dependencies
 
       - name: Install dependencies
-        run: pip install pandas requests websocket-client pytz
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests websocket-client pytz
 
       - name: Run Tracker
         env:
