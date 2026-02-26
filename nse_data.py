@@ -72,8 +72,7 @@ def fetch_and_build_list():
     
     # 3. Filter 5x and Exclusions
     mis_df = lev_df[lev_df["MIS"] >= 5][["Symbol", "MIS"]].copy()
-    exclude_pattern = re.compile(r"(BEES|ETF|CASE)", re.IGNORECASE)
-    mis_df = mis_df[~mis_df["Symbol"].str.contains(exclude_pattern, na=False)]
+    mis_df = mis_df[~mis_df["Symbol"].str.contains("BEES|ETF|CASE", case=False, na=False)]
     mis_df = mis_df[~mis_df["Symbol"].isin(EXCLUDED_SYMBOLS)]
     
     # 4. Merge to get all potential 5x IDs
