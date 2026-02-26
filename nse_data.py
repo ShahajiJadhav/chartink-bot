@@ -15,7 +15,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 IST = pytz.timezone("Asia/Kolkata")
 
 # --- PARAMETERS ---
-VOL_5MIN_THRESHOLD_CR = 40.0
+VOL_5MIN_THRESHOLD_CR = 0.1
 COOLDOWN_SECONDS = 300  # 5 Minutes cooldown for same stock alert
 CR_UNIT = 10_000_000
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         # 3. Main Loop
         while True:
             now_ist = datetime.now(IST).time()
-            market_end = datetime.strptime("15:30:00", "%H:%M:%S").time()
+            market_end = datetime.strptime("23:30:00", "%H:%M:%S").time()
 
             if now_ist > market_end:
                 print("🏁 Market closed (15:30 IST). Exiting script.")
