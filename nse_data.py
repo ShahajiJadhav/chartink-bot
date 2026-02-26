@@ -15,7 +15,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 IST = pytz.timezone("Asia/Kolkata")
 
 # --- PARAMETERS ---
-VOL_5MIN_THRESHOLD_CR = 0.1
+VOL_5MIN_THRESHOLD_CR = 40.0
 COOLDOWN_SECONDS = 300  # 5 Minutes cooldown for same stock alert
 CR_UNIT = 10_000_000
 
@@ -226,8 +226,8 @@ def process_volume(sec_id, ltp, cum_vol):
                 
                 msg = (f"🔥 *VOLUME SPIKE: {symbol}*\n"
                        f"Value: ₹{traded_value_cr:.2f} Cr (Last 5m)\n"
-                       f"Price: ₹{ltp} QTY: {ltp}*{SIGNAL_AMOUNT} \n"
-                       f"Delta Qty: {delta_qty} shares")
+                       f"Price: ₹{ltp} QTY: {ltp * Balance} \n"
+                       f"Delta Qty: {delta_qty/1000000 }M shares")
                 print(msg)
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         # 3. Main Loop
         while True:
             now_ist = datetime.now(IST).time()
-            market_end = datetime.strptime("23:30:00", "%H:%M:%S").time()
+            market_end = datetime.strptime("15:30:00", "%H:%M:%S").time()
 
             if now_ist > market_end:
                 print("🏁 Market closed (15:30 IST). Exiting script.")
