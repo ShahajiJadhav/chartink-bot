@@ -43,6 +43,6 @@ jobs:
           python ./chartink_telegram_signal_1_scanners.py &
 
           echo "Starting Main Bot..."
-          python ./nse_data.py &
+          python ./chartink_telegram_signal.py &
 
           wait
