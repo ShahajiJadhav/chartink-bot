@@ -40,82 +40,97 @@ EXCLUDED_SYMBOLS = {
 
 def fetch_and_build_list():
     global ID_TO_SYMBOL, SIDS_LIST
-    print("⬇️ [1/3] Fetching Master Instrument List...")
+    print("⬇️ Fetching live instrument master and leverage data...")
     
+    # 1. Get Instrument Master
+    inst_url = "https://api.dhan.co/v2/instrument/NSE_EQ"
+    # Note: Using standard headers for the master fetch
     headers = {
         'access-token': DHAN_ACCESS_TOKEN, 
         'client-id': DHAN_CLIENT_ID, 
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json'
     }
     
-    try:
-        # 1. Get Master List
-        resp = requests.get("https://api.dhan.co/v2/instrument/NSE_EQ", headers=headers, timeout=30)
-        inst_df = pd.read_csv(StringIO(resp.text))
-        inst_df = inst_df[(inst_df["EXCH_ID"] == "NSE") & (inst_df["SEGMENT"] == "E")]
-        inst_df = inst_df[["SECURITY_ID", "UNDERLYING_SYMBOL"]].rename(columns={"UNDERLYING_SYMBOL": "Symbol"})
-        inst_df["Symbol"] = inst_df["Symbol"].str.upper().str.strip()
+    # The instrument API returns CSV text
+    resp = requests.get(inst_url, headers={'access-token': DHAN_ACCESS_TOKEN})
+    inst_df = pd.read_csv(StringIO(resp.text))
+    
+    inst_df = inst_df[(inst_df["EXCH_ID"] == "NSE") & (inst_df["SEGMENT"] == "E") & (inst_df["INSTRUMENT_TYPE"] == "ES")]
+    inst_df = inst_df[["SECURITY_ID", "UNDERLYING_SYMBOL"]].rename(columns={"UNDERLYING_SYMBOL": "Symbol"})
+    inst_df["Symbol"] = inst_df["Symbol"].str.upper().str.strip()
 
-        print("⬇️ [2/3] Fetching Leverage & Filtering...")
-        sheet_url = "https://docs.google.com/spreadsheets/d/1zqhM3geRNW_ZzEx62y0W5U2ZlaXxG-NDn0V8sJk5TQ4/gviz/tq?tqx=out:csv&gid=1663719548"
-        lev_df = pd.read_csv(sheet_url)
-        
-        # Identify Symbol column dynamically
-        symbol_col = lev_df.columns[list(lev_df.columns).index("Sr.") + 1]
-        lev_df = lev_df.rename(columns={symbol_col: "Symbol"})
-        lev_df["Symbol"] = lev_df["Symbol"].astype(str).str.upper().str.strip()
-        lev_df["MIS"] = pd.to_numeric(lev_df["MIS (Intraday)"].astype(str).str.replace("x","",regex=False).str.replace("X","",regex=False), errors="coerce")
-        
-        # Apply Filters
-        mis_df = lev_df[lev_df["MIS"] >= 5][["Symbol", "MIS"]].copy()
-        mis_df = mis_df[~mis_df["Symbol"].str.contains(r"BEES|ETF|CASE", case=False, na=False)]
-        mis_df = mis_df[~mis_df["Symbol"].isin(EXCLUDED_SYMBOLS)]
-        
-        final_df = mis_df.merge(inst_df, on="Symbol", how="inner")
-        potential_sids = final_df["SECURITY_ID"].tolist()
-        sid_to_symbol_map = dict(zip(final_df['SECURITY_ID'], final_df['Symbol']))
+    # 2. Get Leverage Sheet
+    sheet_url = "https://docs.google.com/spreadsheets/d/1zqhM3geRNW_ZzEx62y0W5U2ZlaXxG-NDn0V8sJk5TQ4/gviz/tq?tqx=out:csv&gid=1663719548"
+    lev_df = pd.read_csv(sheet_url)
+    
+    cols = list(lev_df.columns)
+    symbol_col = cols[cols.index("Sr.") + 1]
+    lev_df = lev_df.rename(columns={symbol_col: "Symbol"})
+    lev_df["Symbol"] = lev_df["Symbol"].astype(str).str.upper().str.strip()
+    lev_df["MIS"] = pd.to_numeric(lev_df["MIS (Intraday)"].astype(str).str.replace("x","",regex=False).str.replace("X","",regex=False), errors="coerce")
+    
+    # 3. Filter 5x and Exclusions
+    mis_df = lev_df[lev_df["MIS"] >= 5][["Symbol", "MIS"]].copy()
+    exclude_pattern = re.compile(r"(BEES|ETF|CASE)", re.IGNORECASE)
+    mis_df = mis_df[~mis_df["Symbol"].str.contains(exclude_pattern, na=False)]
+    mis_df = mis_df[~mis_df["Symbol"].isin(EXCLUDED_SYMBOLS)]
+    
+    # 4. Merge to get all potential 5x IDs
+    final_df = mis_df.merge(inst_df, on="Symbol", how="inner")
+    potential_sids = final_df["SECURITY_ID"].tolist()
+    
+    # PRE-LOOP OPTIMIZATION: Create a fast map to avoid slow .loc inside the loop
+    sid_to_symbol_map = dict(zip(final_df['SECURITY_ID'], final_df['Symbol']))
 
-        print(f"🔍 [3/3] Checking LTP for {len(potential_sids)} candidates...")
-        filtered_data = []
-        quote_url = "https://api.dhan.co/v2/marketfeed/ltp"
+    # 5. Fetch LTP and Filter (5 to 1500)
+    print(f"🔍 Checking prices for {len(potential_sids)} candidates...")
+    filtered_data = []
+    quote_url = "https://api.dhan.co/v2/marketfeed/ltp"
+    
+    # Process in chunks of 1000 (Dhan's maximum limit)
+    for i in range(0, len(potential_sids), 1000):
+        chunk = potential_sids[i:i+1000]
+        payload = {"NSE_EQ": chunk}
         
-        # Dhan allows up to 1000 SIDs per request. 
-        # We chunk them to minimize the number of API calls.
-        for i in range(0, len(potential_sids), 1000):
-            chunk = potential_sids[i:i+1000]
-            print(f"   > Requesting batch {i//1000 + 1} ({len(chunk)} stocks)...")
-            
-            q_resp = requests.post(quote_url, headers=headers, json={"NSE_EQ": chunk}, timeout=20)
+        try:
+            q_resp = requests.post(quote_url, headers=headers, json=payload, timeout=10)
             
             if q_resp.status_code == 200:
-                data = q_resp.json().get('data', {}).get('NSE_EQ', {})
-                for sid_str, details in data.items():
+                # The response structure is: data -> NSE_EQ -> { "SID": {"last_price": 0} }
+                response_json = q_resp.json()
+                market_data = response_json.get('data', {}).get('NSE_EQ', {})
+                
+                for sid_key, details in market_data.items():
+                    # Default to 0 to prevent NoneType comparison errors
                     ltp = details.get('last_price', 0)
+                    
                     if 5 <= ltp <= 1500:
-                        sid_int = int(sid_str)
+                        sid_int = int(sid_key)
                         filtered_data.append({
                             "SECURITY_ID": sid_int, 
                             "Symbol": sid_to_symbol_map.get(sid_int, "Unknown")
                         })
             else:
-                print(f"   ⚠️ Batch failed. Status: {q_resp.status_code}")
+                print(f"⚠️ API error for chunk starting at {i}: {q_resp.status_code}")
             
-            # Rate limit compliance: 1 request per second
-            if i + 1000 < len(potential_sids):
-                time.sleep(1.5) 
+            # Rate limit is 1 req/sec. 1.1s is safe.
+            time.sleep(1.1) 
+            
+        except Exception as e:
+            print(f"⚠️ Quote Error in batch {i}: {e}")
 
-        if filtered_data:
-            valid_df = pd.DataFrame(filtered_data)
-            ID_TO_SYMBOL = pd.Series(valid_df.Symbol.values, index=valid_df.SECURITY_ID).to_dict()
-            SIDS_LIST = valid_df["SECURITY_ID"].astype(str).tolist()
-            print(f"✅ Setup Complete: Monitoring {len(SIDS_LIST)} stocks.")
-        else:
-            print("❌ No stocks matched the price criteria (5-1500).")
+    # Build Final Lists
+    if filtered_data:
+        valid_df = pd.DataFrame(filtered_data)
+        ID_TO_SYMBOL = pd.Series(valid_df.Symbol.values, index=valid_df.SECURITY_ID).to_dict()
+        SIDS_LIST = valid_df["SECURITY_ID"].astype(str).tolist()
+        print(f"✅ Setup Complete: Subscribing to {len(SIDS_LIST)} stocks between ₹5-1500.")
+    else:
+        print("❌ No stocks found meeting the criteria.")
+        ID_TO_SYMBOL = {}
+        SIDS_LIST = []
 
-    except Exception as e:
-        print(f"❌ Critical error during list build: {e}")
-
-# ... (Rest of your process_volume, on_message, and run_ws functions remain the same) ...
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
