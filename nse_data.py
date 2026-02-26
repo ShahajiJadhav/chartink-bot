@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- CONFIG ---
-SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
+SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT")) * 5
 DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -226,7 +226,7 @@ def process_volume(sec_id, ltp, cum_vol):
                 
                 msg = (f"🔥 *VOLUME SPIKE: {symbol}*\n"
                        f"Value: ₹{traded_value_cr:.2f} Cr (Last 5m)\n"
-                       f"Price: ₹{ltp} QTY: {ltp * Balance} \n"
+                       f"Price: ₹{ltp} QTY: { (SIGNAL_AMOUNT/ltp} \n"
                        f"Delta Qty: {delta_qty/1000000 }M shares")
                 print(msg)
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
