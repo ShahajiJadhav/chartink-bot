@@ -39,10 +39,4 @@ jobs:
 
       - name: Run Chartink bots (parallel)
         run: |
-          echo "Starting Scanner Bot..."
-          python ./chartink_telegram_signal_1_scanners.py &
-
-          echo "Starting Main Bot..."
-          python ./chartink_telegram_signal.py &
-
-          wait
+          python chartink_telegram_signal.py
