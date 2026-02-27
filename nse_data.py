@@ -76,7 +76,7 @@ def fetch_and_build_list():
     
     # 3. Filter 5x and Exclusions
     mis_df = lev_df[lev_df["MIS"] >= 5][["Symbol", "MIS"]].copy()
-    exclude_pattern = re.compile(r"(BEES|ETF|CASE)", re.IGNORECASE)
+    exclude_pattern = "BEES|ETF|CASE" # Pandas .str.contains handles strings as regex by default
     mis_df = mis_df[~mis_df["Symbol"].str.contains(exclude_pattern, na=False)]
     mis_df = mis_df[~mis_df["Symbol"].isin(EXCLUDED_SYMBOLS)]
     
