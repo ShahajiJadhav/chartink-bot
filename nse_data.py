@@ -232,47 +232,33 @@ def process_volume(sec_id, ltp, cum_vol):
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
 
 
-def is_market_open():
-    """Checks if the current time is between 09:15 and 15:30 IST."""
-    now_ist = datetime.now(IST).time()
-    market_start = datetime.strptime("09:15:00", "%H:%M:%S").time()
-    market_end = datetime.strptime("15:30:00", "%H:%M:%S").time()
-    return market_start <= now_ist <= market_end
-
-def wait_until_market_opens():
-    """Pauses execution until 09:15 IST if started early."""
-    while True:
-        now_ist = datetime.now(IST)
-        market_start = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
-        
-        if now_ist < market_start:
-            wait_secs = (market_start - now_ist).total_seconds()
-            print(f"🕒 Market hasn't opened yet. Sleeping for {int(wait_secs/60)} minutes...")
-            time.sleep(min(wait_secs, 60)) # Check every minute
-        else:
-            break
+# --- REMOVE THE WAIT FUNCTION ---
+# def wait_until_market_opens(): ... (Delete this)
 
 if __name__ == "__main__":
-    # 1. Handle Pre-market
-    wait_until_market_opens()
+    print(f"🎬 Process started at {datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # 2. Initial Setup
+    # 1. Immediate Setup
     fetch_and_build_list()
     
-    if SIDS_LIST:
-        print(f"🚀 Monitoring started. Will auto-close at 15:30 IST.")
-        
-        # 3. Main Loop
-        while True:
-            now_ist = datetime.now(IST).time()
-            market_end = datetime.strptime("15:30:00", "%H:%M:%S").time()
+    if not SIDS_LIST:
+        print("❌ No stocks found. Exiting.")
+        exit(1)
 
-            if now_ist > market_end:
-                print("🏁 Market closed (15:30 IST). Exiting script.")
-                break
+    print(f"🚀 Monitoring {len(SIDS_LIST)} stocks.")
+
+    # 2. Main Loop
+    while True:
+        now_ist = datetime.now(IST).time()
+        market_end = datetime.strptime("15:30:00", "%H:%M:%S").time()
+
+        if now_ist > market_end:
+            print("🏁 Market closed (15:30 IST). Exiting script.")
+            break
             
-            try:
-                run_ws() 
-            except Exception as e:
-                print(f"⚠️ Connection dropped: {e}. Reconnecting in 5 seconds...")
-                time.sleep(5)
+        try:
+            run_ws() 
+        except Exception as e:
+            # Crucial: log the error so you can see it in GitHub/Cron logs
+            print(f"⚠️ Connection dropped: {e}. Reconnecting in 5s...")
+            time.sleep(5)
