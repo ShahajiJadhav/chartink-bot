@@ -11,7 +11,7 @@ load_dotenv()
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
 DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 IST = pytz.timezone("Asia/Kolkata")
 
