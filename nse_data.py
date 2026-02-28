@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 # --- CONFIG ---
+SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
 DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -118,6 +120,8 @@ def process_volume(sec_id, ltp, cum_vol):
         volume_history[sec_id] = deque()
 
     volume_history[sec_id].append((now, cum_vol))
+    
+    # Keep only 5 mins of data
     while volume_history[sec_id] and (now - volume_history[sec_id][0][0] > 300):
         volume_history[sec_id].popleft()
 
@@ -127,12 +131,19 @@ def process_volume(sec_id, ltp, cum_vol):
         traded_value_cr = (delta_qty * ltp) / CR_UNIT
 
         if traded_value_cr >= VOL_5MIN_THRESHOLD_CR:
-            if now - alert_cooldowns.get(sec_id, 0) > COOLDOWN_SECONDS:
-                alert_cooldowns[sec_id] = now
+            last_alert = alert_cooldowns.get(sec_id, 0)
+            
+            # CHECK COOLDOWN FIRST
+            if now - last_alert > COOLDOWN_SECONDS:
+                # UPDATE IMMEDIATELY to block near-simultaneous packets
+                alert_cooldowns[sec_id] = now 
+                
                 symbol = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
-                msg = f"🔥 *VOLUME SPIKE*\n*Stock:* {symbol}\n*5-Min Vol:* ₹{traded_value_cr:.2f} Cr\n*Price:* {ltp}"
+                qty = int((SIGNAL_AMOUNT * 5) // ltp)
+                msg = f"🔥VOLUME SPIKE\nStock: {symbol} QTY: {qty} \n*5-Min Vol:* ₹{traded_value_cr:.2f} Cr\n*Price:* {ltp}"
+                
                 print(f"Alert: {symbol} - {traded_value_cr:.2f} Cr")
-                threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
+                threading.Thread(target=send_telegram(msg), daemon=True).start()
 
 def on_message(ws, message):
     global packets_received
@@ -182,7 +193,7 @@ if __name__ == "__main__":
     if SIDS_LIST:
         while True:
             # Auto-exit after market hours
-            if datetime.now(IST).time() > datetime.strptime("15:30:00", "%H:%M:%S").time():
+            if datetime.now(IST).time() > datetime.strptime("23:30:00", "%H:%M:%S").time():
                 print("🏁 Market Closed. Exiting script.")
                 break
             try:
