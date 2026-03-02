@@ -184,20 +184,22 @@ def run_ws():
 
 if __name__ == "__main__":
     print(f"🎬 Script Started at {datetime.now(IST)}")
-    
-    # Start Heartbeat Thread
     threading.Thread(target=heartbeat, daemon=True).start()
     
-    fetch_and_build_list()
-    
-    if SIDS_LIST:
-        while True:
-            # Auto-exit after market hours
-            if datetime.now(IST).time() > datetime.strptime("23:30:00", "%H:%M:%S").time():
-                print("🏁 Market Closed. Exiting script.")
-                break
-            try:
-                run_ws()
-            except Exception as e:
-                print(f"⚠️ Socket error: {e}. Reconnecting in 5s...")
-                time.sleep(5)
+    # Loop until we actually find stocks or market closes
+    while not SIDS_LIST:
+        fetch_and_build_list()
+        if not SIDS_LIST:
+            print("Refetching in 30 seconds...")
+            time.sleep(30)
+
+    # Now enter the WebSocket loop
+    while True:
+        if datetime.now(IST).time() > datetime.strptime("15:30:00", "%H:%M:%S").time():
+            print("🏁 Market Closed. Exiting script.")
+            break
+        try:
+            run_ws()
+        except Exception as e:
+            print(f"⚠️ Socket error: {e}. Reconnecting...")
+            time.sleep(5)
