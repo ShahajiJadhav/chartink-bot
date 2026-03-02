@@ -111,8 +111,12 @@ def fetch_and_build_list():
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    try: requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}, timeout=5)
-    except: pass
+    try:
+        resp = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}, timeout=5)
+        if resp.status_code != 200:
+            print(f"❌ Telegram API Error: {resp.status_code} - {resp.text}")
+    except Exception as e:
+        print(f"❌ Telegram Connection Error: {e}")
 
 def process_volume(sec_id, ltp, cum_vol):
     now = time.time()
@@ -143,7 +147,7 @@ def process_volume(sec_id, ltp, cum_vol):
                 msg = f"🔥VOLUME SPIKE\nStock: {symbol} QTY: {qty} \n*5-Min Vol:* ₹{traded_value_cr:.2f} Cr\n*Price:* {ltp}"
                 
                 print(f"Alert: {symbol} - {traded_value_cr:.2f} Cr")
-                threading.Thread(target=send_telegram(msg), daemon=True).start()
+                threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
 
 def on_message(ws, message):
     global packets_received
