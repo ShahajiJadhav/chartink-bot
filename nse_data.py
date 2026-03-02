@@ -11,9 +11,9 @@ load_dotenv()
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
 DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 IST = pytz.timezone("Asia/Kolkata")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # --- PARAMETERS ---
 VOL_5MIN_THRESHOLD_CR = 40.0
@@ -110,13 +110,28 @@ def fetch_and_build_list():
 # ============================================================= #
 
 def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    if not TELEGRAM_TOKEN:
+        print("❌ ERROR: Telegram Token is NULL. Check your .env/Secrets.")
+        return
+    # Ensure the token doesn't already start with 'bot' (common mistake)
+    token = TELEGRAM_TOKEN.replace("bot", "")
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": msg,
+        "parse_mode": "Markdown"
+    }
     try:
-        resp = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}, timeout=5)
-        if resp.status_code != 200:
+        resp = requests.post(url, data=payload, timeout=8)
+        if resp.status_code == 200:
+            print("📤 Telegram message sent successfully.")
+        else:
             print(f"❌ Telegram API Error: {resp.status_code} - {resp.text}")
+            print(f"Target URL (Masked): https://api.telegram.org/bot{token[:5]}.../sendMessage")
     except Exception as e:
         print(f"❌ Telegram Connection Error: {e}")
+        
 
 def process_volume(sec_id, ltp, cum_vol):
     now = time.time()
