@@ -17,20 +17,15 @@ import ast,os
 # ============================================================
 # CONFIG
 # ============================================================
-
-SIGNAL_AMOUNT = 250.0
-
 SIGNAL_AMOUNT = float(os.getenv("SIGNAL_AMOUNT"))
-
 CHARTINK_COOKIE_RAW = os.getenv("CHARTINK_COOKIE")
 CHARTINK_CSRF_TOKEN = os.getenv("CHARTINK_CSRF_TOKEN")
-
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} (  [0] 5 minute volume *  [0] 5 minute close >  450000000 and  daily close <  1000 and  daily close >  5 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.004 ) )'''}
+signal_payload = {"scan_clause": '''( {1339018} (  [1339018] 5 minute count( 20, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute close ) <  [-1] 5 minute close *  0.002 ) >  16 and  daily close <  1000 and  [0] 5 minute volume *  [0] 5 minute close >  85000000 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.01 and( {cash} (  [0] 5 minute close >  [-1] 5 minute max( 20 ,  [-1] 5 minute close ) or  [0] 5 minute close <  [-1] 5 minute min( 20 ,  [-1] 5 minute close ) ) ) ) )'''}
 
 HOME = Path.home()
 
