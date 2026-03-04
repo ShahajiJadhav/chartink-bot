@@ -30,4 +30,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
         # Force unbuffered output with -u
-        run: python -u nse_data.py
+        run: python -u nse_data.py & python -u dhan_streamer_order_book.py
