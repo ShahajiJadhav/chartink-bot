@@ -143,10 +143,10 @@ def parse_and_alert(message):
                     
                     # Determine which side hit the threshold and its specific price
                     if max_b_val >= THRESHOLD_CR:
-                        side = "BUY (Support)"
+                        side = "BUY"
                         target_price = max_b_price
                     else:
-                        side = "SELL (Resistance)"
+                        side = "SELL"
                         target_price = max_a_price
 
                     sym = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
@@ -154,10 +154,10 @@ def parse_and_alert(message):
                     
                     # Alert Message including the Big Order Price
                     msg = (f"<b>OrderBook</b>"
-                           f"Stock: <b>{sym}</b>"
+                           f"Stock: <b>{sym}</b>, "
                            f"Side: {side} \n"
-                           f"<b>Big Order Price: ₹{target_price}</b> "
-                           f"Signal Qty: {qty}")
+                           f"<b>Price: ₹{target_price}</b> "
+                           f"Qty: {qty}")
                     
                     threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
                     print(f"🔔 Alert sent for {sym} at {target_price}")
