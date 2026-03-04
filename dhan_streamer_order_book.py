@@ -111,34 +111,58 @@ def parse_and_alert(message):
         feed_code = message[0]
         sec_id = struct.unpack('<I', message[4:8])[0]
 
-        # Process Market Depth Feed
+        # Process Market Depth Feed (Code 8)
         if feed_code == 8 and len(message) >= 162:
             ltp = round(struct.unpack('<f', message[8:12])[0], 2)
             
-            bids_amt, asks_amt = [], []
+            bids_data, asks_data = [], []
+            
+            # Extract 5 levels of market depth
             for i in range(5):
                 off = 62 + (i * 20)
-                b_q, a_q = struct.unpack('<I', message[off : off+4])[0], struct.unpack('<I', message[off+4 : off+8])[0]
-                b_p, a_p = struct.unpack('<f', message[off+12 : off+16])[0], struct.unpack('<f', message[off+16 : off+20])[0]
-                bids_amt.append(b_p * b_q)
-                asks_amt.append(a_p * a_q)
+                # Quantities
+                b_q = struct.unpack('<I', message[off : off+4])[0]
+                a_q = struct.unpack('<I', message[off+4 : off+8])[0]
+                # Prices
+                b_p = round(struct.unpack('<f', message[off+12 : off+16])[0], 2)
+                a_p = round(struct.unpack('<f', message[off+16 : off+20])[0], 2)
+                
+                # Store as (Value, Price) tuples
+                bids_data.append((b_p * b_q, b_p))
+                asks_data.append((a_p * a_q, a_p))
 
-            max_b, max_a = int(max(bids_amt)), int(max(asks_amt))
-            
+            # Find the level with the highest total value
+            max_b_val, max_b_price = max(bids_data, key=lambda x: x[0])
+            max_a_val, max_a_price = max(asks_data, key=lambda x: x[0])
+
             # Threshold Check
-            if max_b >= THRESHOLD_CR or max_a >= THRESHOLD_CR:
+            if max_b_val >= THRESHOLD_CR or max_a_val >= THRESHOLD_CR:
                 now = time.time()
                 if (now - alert_cooldowns.get(sec_id, 0)) > COOLDOWN_SECONDS:
                     alert_cooldowns[sec_id] = now
-                    side = "BUY" if max_b >= THRESHOLD_CR else "SELL"
+                    
+                    # Determine which side hit the threshold and its specific price
+                    if max_b_val >= THRESHOLD_CR:
+                        side = "BUY (Support)"
+                        target_price = max_b_price
+                    else:
+                        side = "SELL (Resistance)"
+                        target_price = max_a_price
+
                     sym = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
                     qty = int(SIGNAL_AMOUNT / ltp) if ltp > 0 else 0
                     
-                    msg = f"<b>OrderBook ALERT</b>Side: {side}\nStock: {sym} LTP: ₹{ltp} Qty: {qty}"
+                    # Alert Message including the Big Order Price
+                    msg = (f"<b>OrderBook</b>"
+                           f"Stock: <b>{sym}</b>"
+                           f"Side: {side} \n"
+                           f"<b>Big Order Price: ₹{target_price}</b> "
+                           f"Signal Qty: {qty}")
+                    
                     threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
-                    print(f"🔔 Alert sent for {sym}")
-    except:
-        pass
+                    print(f"🔔 Alert sent for {sym} at {target_price}")
+    except Exception as e:
+        print(f"Parsing Error: {e}")
 
 def on_message(ws, message):
     if isinstance(message, bytes):
