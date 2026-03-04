@@ -162,7 +162,7 @@ def parse_and_alert(message):
                     msg = (f"🚨 <b>BIG ORDER </b>\n"
                            f"<b>{side}:</b> {sym} QTY: {signal_qty}\n"
                            f"<b>Big Order Price:</b> ₹{big_order_px}\n"
-                           f"<b>Big Order Value:</b> int({big_order_qty}*{big_order_px}/10000000 )")
+                           f"<b>Big Order Value:</b> {int(big_order_qty * big_order_px / 10000000)} Cr")
                     
                     # Now this line is valid
                     threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
