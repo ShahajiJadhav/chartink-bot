@@ -115,54 +115,60 @@ def parse_and_alert(message):
         if feed_code == 8 and len(message) >= 162:
             ltp = round(struct.unpack('<f', message[8:12])[0], 2)
             
-            bids_data, asks_data = [], []
+            bids = [] # List of [quantity, price]
+            asks = [] # List of [quantity, price]
             
-            # Extract 5 levels of market depth
+            # 1. Extract all 5 levels of depth
             for i in range(5):
                 off = 62 + (i * 20)
-                # Quantities
-                b_q = struct.unpack('<I', message[off : off+4])[0]
-                a_q = struct.unpack('<I', message[off+4 : off+8])[0]
-                # Prices
-                b_p = round(struct.unpack('<f', message[off+12 : off+16])[0], 2)
-                a_p = round(struct.unpack('<f', message[off+16 : off+20])[0], 2)
+                # Quantities are 4-byte Integers
+                bq = struct.unpack('<I', message[off : off+4])[0]
+                aq = struct.unpack('<I', message[off+4 : off+8])[0]
+                # Prices are 4-byte Floats
+                bp = round(struct.unpack('<f', message[off+12 : off+16])[0], 2)
+                ap = round(struct.unpack('<f', message[off+16 : off+20])[0], 2)
                 
-                # Store as (Value, Price) tuples
-                bids_data.append((b_p * b_q, b_p))
-                asks_data.append((a_p * a_q, a_p))
+                bids.append({"qty": bq, "px": bp})
+                asks.append({"qty": aq, "px": ap})
 
-            # Find the level with the highest total value
-            max_b_val, max_b_price = max(bids_data, key=lambda x: x[0])
-            max_a_val, max_a_price = max(asks_data, key=lambda x: x[0])
+            # 2. Find the level with the absolute Maximum Quantity
+            max_bid_level = max(bids, key=lambda x: x['qty'])
+            max_ask_level = max(asks, key=lambda x: x['qty'])
 
-            # Threshold Check
+            # 3. Calculate "Value" for your existing Threshold check (CR calculation)
+            max_b_val = max_bid_level['qty'] * max_bid_level['px']
+            max_a_val = max_ask_level['qty'] * max_ask_level['px']
+
+            # 4. Threshold Check (using your 4 Crore / 40,000,000 limit)
             if max_b_val >= THRESHOLD_CR or max_a_val >= THRESHOLD_CR:
                 now = time.time()
                 if (now - alert_cooldowns.get(sec_id, 0)) > COOLDOWN_SECONDS:
                     alert_cooldowns[sec_id] = now
                     
-                    # Determine which side hit the threshold and its specific price
                     if max_b_val >= THRESHOLD_CR:
-                        side = "BUY"
-                        target_price = max_b_price
+                        side = "BUY SIDE"
+                        big_order_px = max_bid_level['px']
+                        big_order_qty = max_bid_level['qty']
                     else:
-                        side = "SELL"
-                        target_price = max_a_price
+                        side = "SELL SIDE"
+                        big_order_px = max_ask_level['px']
+                        big_order_qty = max_ask_level['qty']
 
                     sym = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
-                    qty = int(SIGNAL_AMOUNT / ltp) if ltp > 0 else 0
+                    # Signal Qty is based on your SIGNAL_AMOUNT config
+                    signal_qty = int(SIGNAL_AMOUNT / ltp) if ltp > 0 else 0
                     
-                    # Alert Message including the Big Order Price
-                    msg = (f"<b>OrderBook</b>"
-                           f"Stock: <b>{sym}</b>, "
-                           f"Side: {side} \n"
-                           f"<b>Price: ₹{target_price}</b> "
-                           f"Qty: {qty}")
+                    msg = (f"🚨 <b>BIG ORDER </b>"
+                           f"<b>{side}:</b> {sym} QTY: {signal_qty}\n"
+                           f"<b>Big Order Price:</b> ₹{big_order_px}\n"
+                           f"<b>Big Order Qty:</b> {big_order_qty}"
                     
                     threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
-                    print(f"🔔 Alert sent for {sym} at {target_price}")
+                    print(f"🔔 {sym} | Big Qty: {big_order_qty} at {big_order_px}")
+
     except Exception as e:
-        print(f"Parsing Error: {e}")
+        pass # Keep silent for production, or print(e) for debugging
+
 
 def on_message(ws, message):
     if isinstance(message, bytes):
