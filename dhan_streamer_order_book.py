@@ -159,10 +159,11 @@ def parse_and_alert(message):
                     signal_qty = int(SIGNAL_AMOUNT / ltp) if ltp > 0 else 0
                     
                    # Added closing parenthesis ) at the end of the string definition
-                    msg = (f"🚨 <b>BIG ORDER </b>\n"
-                           f"<b>{side}:</b> {sym} QTY: {signal_qty}\n"
-                           f"<b>Big Order Price:</b> ₹{big_order_px}\n"
-                           f"<b>Big Order Value:</b> {int(big_order_qty * big_order_px / 10000000)} Cr")
+                    msg = (f"<b>BIG ORDER </b>"
+                           f"<b>{side}:</b> {sym} \n"
+                           f"QTY: {signal_qty} "
+                           f"<b>Price:</b> ₹{big_order_px} "
+                           f"<b>Value:</b> {int(big_order_qty * big_order_px / 10000000)} Cr")
                     
                     # Now this line is valid
                     threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
