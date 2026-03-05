@@ -132,7 +132,7 @@ def send_telegram(msg):
     except Exception as e:
         print(f"❌ Telegram Connection Error: {e}")
         
-
+'''
 def process_volume(sec_id, ltp, cum_vol):
     now = time.time()
     if sec_id not in volume_history:
@@ -163,6 +163,56 @@ def process_volume(sec_id, ltp, cum_vol):
                 
                 print(f"Alert: {symbol} - {traded_value_cr:.2f} Cr")
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
+'''
+
+def process_volume(sec_id, ltp, cum_vol):
+    now = time.time()
+    
+    # 1. Initialize history if new security
+    if sec_id not in volume_history:
+        volume_history[sec_id] = deque()
+
+    # 2. Append current data point
+    volume_history[sec_id].append((now, cum_vol))
+    
+    # 3. Sliding Window: Keep only the last 5 minutes (300 seconds) of data
+    while volume_history[sec_id] and (now - volume_history[sec_id][0][0] > 300):
+        volume_history[sec_id].popleft()
+
+    # 4. Check for Spike
+    if len(volume_history[sec_id]) > 1:
+        start_vol = volume_history[sec_id][0][1]
+        delta_qty = cum_vol - start_vol
+        traded_value_cr = (delta_qty * ltp) / CR_UNIT
+
+        # 5. Evaluate Threshold
+        if traded_value_cr >= VOL_5MIN_THRESHOLD_CR:
+            last_alert_time = alert_cooldowns.get(sec_id, 0)
+            
+            # 6. Check Cooldown (500 seconds)
+            if now - last_alert_time > COOLDOWN_SECONDS:
+                
+                # --- CRITICAL FIX ---
+                # We update the dictionary IMMEDIATELY.
+                # This "closes the gate" for any other packets arriving 
+                # while the Telegram message is still being prepared.
+                alert_cooldowns[sec_id] = now 
+                # ---------------------
+
+                # 7. Prepare message details
+                symbol = ID_TO_SYMBOL.get(sec_id, f"ID:{sec_id}")
+                # Simple QTY calculation based on your SIGNAL_AMOUNT
+                qty = int((SIGNAL_AMOUNT * 5) // ltp)
+                
+                msg = (
+                    f"VOLUME SPIKE- "
+                    f"Stock: {symbol}\n"
+                    f"Qty: {qty} "
+                    f"5-Min Vol: ₹{traded_value_cr:.2f} Cr\n"
+                )
+                print(f"🚀 Alert Triggered: {symbol} | Vol: {traded_value_cr:.2f} Cr")
+                threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
+
 
 def on_message(ws, message):
     global packets_received
