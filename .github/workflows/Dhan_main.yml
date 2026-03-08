@@ -29,5 +29,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
+          EXCLUDED_STOCKS: ${{ secrets.EXCLUDED_STOCKS }}
         # Force unbuffered output with -u
         run: python -u nse_data.py
