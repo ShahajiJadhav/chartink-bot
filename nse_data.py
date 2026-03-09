@@ -203,10 +203,8 @@ def process_volume(sec_id, ltp, cum_vol):
                 qty = int((SIGNAL_AMOUNT * 5) // ltp)
                 
                 msg = (
-                    f"VOLUME SPIKE- "
-                    f"Stock: {symbol}\n"
-                    f"Qty: {qty} "
-                    f"5-Min Vol: ₹{traded_value_cr:.2f} Cr\n"
+                    f"VOL SPIKE- {symbol}, Qty: {qty}"
+                    f"Vol: ₹{traded_value_cr:.2f} Cr\n"
                 )
                 print(f"🚀 Alert Triggered: {symbol} | Vol: {traded_value_cr:.2f} Cr")
                 threading.Thread(target=send_telegram, args=(msg,), daemon=True).start()
