@@ -31,7 +31,6 @@ packets_received = 0
 #                INSTRUMENT FETCH & FILTERING                   #
 # ============================================================= #
 excluded_str = os.getenv('EXCLUDED_SYMBOLS', '')
-print(type(excluded_str))
 EXCLUDED_SYMBOLS = set(symbol.strip() for symbol in excluded_str.split(',')) if excluded_str else set()
 
 def fetch_and_build_list():
