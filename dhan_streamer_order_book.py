@@ -11,7 +11,7 @@ DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
 DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-EXCLUDED_SYMBOLS = {os.getenv("EXCLUDED_SYMBOLS")}
+EXCLUDED_SYMBOLS = {s.strip().upper() for s in os.getenv("EXCLUDED_SYMBOLS","").split(",") if s}
 
 IST = pytz.timezone("Asia/Kolkata")
 
