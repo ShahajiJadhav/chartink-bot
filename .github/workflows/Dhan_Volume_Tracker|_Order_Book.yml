@@ -1,13 +1,12 @@
 name: Dhan Volume Tracker Order Book
 
 on:
-  schedule:
-    - cron: '30 3 * * 1-5' # 9:00 AM IST
-  workflow_dispatch:      # Manual trigger
+  workflow_dispatch:   # Manual trigger only
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,5 +29,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
           EXCLUDED_STOCKS: ${{ secrets.EXCLUDED_STOCKS }}
-        # Force unbuffered output with -u
         run: python -u dhan_streamer_order_book.py
