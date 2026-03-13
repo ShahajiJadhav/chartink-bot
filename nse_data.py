@@ -16,7 +16,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # --- PARAMETERS ---
 VOL_5MIN_THRESHOLD_CR = 40.0
-COOLDOWN_SECONDS = 500 
+COOLDOWN_SECONDS = 800 
 CR_UNIT = 10_000_000
 
 # --- STATE ---
@@ -80,7 +80,7 @@ def fetch_and_build_list():
                 market_data = q_resp.json().get('data', {}).get('NSE_EQ', {})
                 for sid_key, details in market_data.items():
                     ltp = details.get('last_price', 0)
-                    if 5 <= ltp <= 1500:
+                    if 5 <= ltp <= 900:
                         sid_int = int(sid_key)
                         filtered_data.append({"SECURITY_ID": sid_int, "Symbol": sid_to_symbol_map.get(sid_int, "Unknown")})
             time.sleep(1.2)
