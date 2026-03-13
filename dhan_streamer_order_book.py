@@ -18,7 +18,7 @@ IST = pytz.timezone("Asia/Kolkata")
 
 # --- PARAMETERS ---
 THRESHOLD_CR = 150000000 
-COOLDOWN_SECONDS = 600     
+COOLDOWN_SECONDS = 800     
 ID_TO_SYMBOL = {}
 SIDS_LIST = []
 alert_cooldowns = {}
@@ -71,7 +71,7 @@ def fetch_and_build_list():
                 market_data = q_resp.json().get('data', {}).get('NSE_EQ', {})
                 for sid_key, details in market_data.items():
                     ltp = details.get('last_price', 0)
-                    if 5 <= ltp <= 1500:
+                    if 5 <= ltp <= 900:
                         sid_int = int(sid_key)
                         filtered_data.append({"SECURITY_ID": sid_int, "Symbol": sid_to_symbol_map.get(sid_int, "Unknown")})
             time.sleep(1.1)
