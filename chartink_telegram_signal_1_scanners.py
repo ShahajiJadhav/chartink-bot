@@ -25,7 +25,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} (  [1339018] 5 minute count( 20, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute close ) <  [-1] 5 minute close *  0.002 ) >  16 and  daily close <  1000 and  [0] 5 minute volume *  [0] 5 minute close >  85000000 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.01 and( {cash} (  [0] 5 minute close >  [-1] 5 minute max( 20 ,  [-1] 5 minute close ) or  [0] 5 minute close <  [-1] 5 minute min( 20 ,  [-1] 5 minute close ) ) ) ) )'''}
+signal_payload = {"scan_clause": '''( {1339018} (  [0] 5 minute close *  [0] 5 minute volume >  120000000 and  [0] 5 minute close <  900 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.006 and  [-2] 5 minute count( 20, 1 where  abs(  [-2] 5 minute close -  [-2] 5 minute open ) <  [-2] 5 minute low *  0.002 ) >  15 and  [-2] 5 minute countstreak( 6, 1 where  abs(  [-2] 5 minute close -  [-2] 5 minute open ) <  [-2] 5 minute low *  0.002 ) >  4 ) )'''}
 
 HOME = Path.home()
 
@@ -244,7 +244,7 @@ def main_loop():
                 new_keys.append(key)
 
             if msgs:
-                text = "📢 <u>Signal</u>\n" + "\n".join(msgs)
+                text = "📢 <u>Countstreak</u>\n" + "\n".join(msgs)
 
                 if send_telegram(text):
                     now = datetime.now(pytz.utc)
