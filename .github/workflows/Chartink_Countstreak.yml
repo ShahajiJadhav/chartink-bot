@@ -1,0 +1,39 @@
+name: Chartink Bot (Countstreak)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 3 * * 1-5"   # 09:20 IST
+
+jobs:
+  run-bots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    env:
+      CHARTINK_COOKIE: ${{ secrets.CHARTINK_COOKIE }}
+      CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SIGNAL_AMOUNT: ${{ secrets.SIGNAL_AMOUNT }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show repo files
+        run: ls -R
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pytz
+
+      - name: Run Chartink bots
+        run: python chartink_telegram_signal_1_scanners.py
