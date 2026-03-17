@@ -1,9 +1,9 @@
-name: Chartink Bot (Countstreak)
+# name: Chartink Bot (Countstreak)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "50 3 * * 1-5"   # 09:20 IST
+  # schedule:
+  #  - cron: "50 3 * * 1-5"   # 09:20 IST
 
 jobs:
   run-bots:
