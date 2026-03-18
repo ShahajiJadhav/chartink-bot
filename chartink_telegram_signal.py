@@ -87,8 +87,8 @@ def log(msg: str):
     logger.info(msg)
 
 # ===================== PAYLOADS =====================
-buy_payload  = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.006 and  [0] 5 minute volume *  [0] 5 minute close >  120000000 and  [-1] 5 minute countstreak( 7, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute close ) <  [-1] 5 minute close *  0.0015 ) >  5 and  daily close <  1000 and  [0] 5 minute low <  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close >  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close >  [0] 5 minute open ) )'''}
-sell_payload = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.006 and  [0] 5 minute volume *  [0] 5 minute close >  120000000 and  [-1] 5 minute countstreak( 7, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute close ) <  [-1] 5 minute close *  0.0015 ) >  5 and  daily close <  1000 and  [0] 5 minute high >  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close <  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close <  [0] 5 minute open ) )'''}
+buy_payload  = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} -  [-1] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} ) >  15 and  [0] 5 minute sum(  [0] 5 minute volume *  [0] 5 minute close , 30 ) >  150000000 and  daily close <  900 ) )'''}
+sell_payload = {"scan_clause": '''( {1339018} (  daily close <  1000 and  [0] 5 minute sum(  [0] 5 minute volume *  [0] 5 minute close , 30 ) >  50000000 and( {cash} (  abs(  [0] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} -  [-1] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} ) >  20 ) ) ) )'''}
 
 # ===================== HELPERS =====================
 def parse_cookie(blob: str) -> dict:
@@ -214,9 +214,9 @@ def main():
         if keys:
             msg = ""
             if buy:
-                msg += "\n🟢 Buy\n" + "\n".join(buy)
+                msg += "\nSignal_1\n" + "\n".join(buy)
             if sell:
-                msg += "\n🔴 Sell\n" + "\n".join(sell)
+                msg += "\nSignal_2\n" + "\n".join(sell)
 
             if send_telegram(msg.strip()):
                 now = datetime.now(pytz.utc)
