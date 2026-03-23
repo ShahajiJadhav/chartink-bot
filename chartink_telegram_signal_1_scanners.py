@@ -25,7 +25,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} (  daily close <  1000 and  [0] 5 minute sum(  [0] 5 minute volume *  [0] 5 minute close , 30 ) >  50000000 and( {cash} (  abs(  [0] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} -  [-1] 5 minute {custom_indicator_185281_start}\"{custom_indicator_185278_start}\"ema(  {custom_indicator_185277_start}\"ema(  close - 1 candle ago close , 10 )\"{custom_indicator_185277_end} , 26 )\"{custom_indicator_185278_end} /  {custom_indicator_185280_start}\"ema(  {custom_indicator_185279_start}\"ema( abs(  close - 1 candle ago close ) , 10 )\"{custom_indicator_185279_end} , 26 )\"{custom_indicator_185280_end} * 100\"{custom_indicator_185281_end} ) >  20 ) ) ) )'''}
+signal_payload = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute {custom_indicator_185281_start}"{custom_indicator_185278_start}"ema(  {custom_indicator_185277_start}"ema(  close - 1 candle ago close , 10 )"{custom_indicator_185277_end} , 26 )"{custom_indicator_185278_end} /  {custom_indicator_185280_start}"ema(  {custom_indicator_185279_start}"ema( abs(  close - 1 candle ago close ) , 10 )"{custom_indicator_185279_end} , 26 )"{custom_indicator_185280_end} * 100"{custom_indicator_185281_end} -  [-1] 5 minute {custom_indicator_185281_start}"{custom_indicator_185278_start}"ema(  {custom_indicator_185277_start}"ema(  close - 1 candle ago close , 10 )"{custom_indicator_185277_end} , 26 )"{custom_indicator_185278_end} /  {custom_indicator_185280_start}"ema(  {custom_indicator_185279_start}"ema( abs(  close - 1 candle ago close ) , 10 )"{custom_indicator_185279_end} , 26 )"{custom_indicator_185280_end} * 100"{custom_indicator_185281_end} ) >  15 and  [0] 5 minute sum(  [0] 5 minute volume *  [0] 5 minute close , 30 ) >  150000000 and  daily close <  900 ) )'''}
 
 HOME = Path.home()
 
@@ -244,7 +244,7 @@ def main_loop():
                 new_keys.append(key)
 
             if msgs:
-                text = "📢 <u>Countstreak</u>\n" + "\n".join(msgs)
+                text = "📢 <u>TSI</u>\n" + "\n".join(msgs)
 
                 if send_telegram(text):
                     now = datetime.now(pytz.utc)
