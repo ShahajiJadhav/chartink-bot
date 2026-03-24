@@ -195,17 +195,15 @@ def fetch_chartink_signals(payload):
         for d in data.get("data", []):
             sym = (d.get("nsecode") or "").upper().strip()
             close = float(d.get("close", 0) or 0)
-            volume = float(d.get("volume", 0) or 0)
             if not sym or close <= 0:
                 continue
 
             qty = int((SIGNAL_AMOUNT * 5) // close)
-            Traded = round((volume * close)/10000000,2)
-            msg = f"SIGNAL {sym} Qty={qty}  Traded={Traded}"
+            msg = f"SIGNAL {sym} Qty={qty}"
 
             signal_logger.info(msg)
             print(msg)
-            out.append({"symbol": sym, "close": close, "Traded":Traded})
+            out.append({"symbol": sym, "close": close})
         return out
 
     except Exception as e:
@@ -240,7 +238,7 @@ def main_loop():
                     continue
 
                 qty = int((SIGNAL_AMOUNT * 5) // s["close"])
-                msgs.append(f"<b>{s['symbol']}</b> Qty={qty} Traded={s['Traded']}")
+                msgs.append(f"<b>{s['symbol']}</b> Qty={qty}")
                 new_keys.append(key)
 
             if msgs:
