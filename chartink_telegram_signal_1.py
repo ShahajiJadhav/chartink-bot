@@ -87,8 +87,8 @@ def log(msg: str):
     logger.info(msg)
 
 # ===================== PAYLOADS =====================
-buy_payload  = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.006 and  [0] 5 minute volume *  [0] 5 minute close >  250000000 and  daily close <  1500 and  [0] 5 minute low <  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close >  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close >  [0] 5 minute open ) )'''}
-sell_payload = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.005 and  [0] 5 minute volume *  [0] 5 minute close >  250000000 and  daily close <  1500 and  [0] 5 minute high >  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close <  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close <  [0] 5 minute open ) )'''}
+buy_payload  = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.008 and  [0] 5 minute volume *  [0] 5 minute close >  250000000 and  daily close <  1500 and  [0] 5 minute close >  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close >  [0] 5 minute open and( {cash} (  [0] 5 minute open <  [0] 5 minute supertrend( 18 , 1.1 ) or  [-1] 5 minute close <  [0] 5 minute supertrend( 18 , 1.1 ) ) ) ) )'''}
+sell_payload = {"scan_clause": '''( {1339018} (  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.008 and  [0] 5 minute volume *  [0] 5 minute close >  250000000 and  daily close <  1500 and  [0] 5 minute close <  [0] 5 minute supertrend( 18 , 1.1 ) and  [0] 5 minute close <  [0] 5 minute open and( {cash} (  [0] 5 minute open >  [0] 5 minute supertrend( 18 , 1.1 ) or  [-1] 5 minute close >  [0] 5 minute supertrend( 18 , 1.1 ) ) ) ) )'''}
 
 # ===================== HELPERS =====================
 def parse_cookie(blob: str) -> dict:
