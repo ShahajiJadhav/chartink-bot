@@ -34,8 +34,9 @@ jobs:
           pip install requests pytz
 
       - name: Run Chartink bots
-        run: |
-          python chartink_telegram_signal.py &
-          python chartink_telegram_signal_1.py &
-          wait
+        # run: |
+        #   python chartink_telegram_signal.py &
+        #   python chartink_telegram_signal_1.py &
+        #   wait
+          run: python -u chartink_telegram_signal.py
 
