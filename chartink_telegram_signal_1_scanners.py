@@ -215,7 +215,7 @@ def fetch_chartink_signals(payload):
 # ============================================================
 
 def main_loop():
-    log("[main] loop started")
+    log("[Single] loop started")
     notified = load_notified_cache()
 
     try:
