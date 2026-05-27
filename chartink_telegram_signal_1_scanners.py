@@ -25,7 +25,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} (  [0] 5 minute volume *  [0] 5 minute close >  150000000 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.007 and  [0] 5 minute close <  1500 and  [-1] 5 minute count( 5, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  [-1] 5 minute low *  0.003 ) >  3 and  [0] 5 minute volume *  [0] 5 minute close >  [-1] 5 minute sma(  [-1] 5 minute close *  [-1] 5 minute volume , 9 ) *  8 and( {cash} (  abs(  [-2] 5 minute max( 14 ,  [-2] 5 minute supertrend( 18 , 1.1 ) ) -  [-2] 5 minute min( 14 ,  [0] 5 minute supertrend( 18 , 1.1 ) ) ) <  0.07 or  [-1] 5 minute count( 18, 1 where  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  [-1] 5 minute low *  0.002 ) >  13 ) ) ) )'''}
+signal_payload = {"scan_clause": '''( {1339018} ( ( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close <  [-1] 5 minute close *  0.92 ) >=  1 and  [0] 5 minute close >  [0] 5 minute open ) ) or( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close >  [-1] 5 minute close *  1.08 ) >=  1 and  [0] 5 minute close <  [0] 5 minute open ) ) ) )'''}
 
 HOME = Path.home()
 
