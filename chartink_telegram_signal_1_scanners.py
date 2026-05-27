@@ -25,7 +25,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} ( ( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close <  [-1] 5 minute close *  0.92 ) >=  1 and  [0] 5 minute close >  [0] 5 minute open ) ) or( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close >  [-1] 5 minute close *  1.08 ) >=  1 and  [0] 5 minute close <  [0] 5 minute open ) ) ) )'''}
+signal_payload = {"scan_clause": '''( {1339018} ( ( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close <  [-1] 5 minute close *  0.92 ) >=  1 and  [0] 5 minute close >  [0] 5 minute open and  [0] 5 minute volume *  [0] 5 minute "high+low/2" >  10000000 ) ) or( {cash} (  [0] 5 minute count( 5, 1 where  [0] 5 minute close >  [-1] 5 minute close *  1.08 ) >=  1 and  [0] 5 minute close <  [0] 5 minute open and  [0] 5 minute volume *  [0] 5 minute "high+low/2" >  10000000 ) ) ) )'''}
 
 HOME = Path.home()
 
