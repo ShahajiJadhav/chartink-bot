@@ -242,7 +242,7 @@ def main_loop():
                 new_keys.append(key)
 
             if msgs:
-                text = "📢 <u>8%</u>\n" + "\n".join(msgs)
+                text = "📢 <u>Signal 3</u>\n" + "\n".join(msgs)
 
                 if send_telegram(text):
                     now = datetime.now(pytz.utc)
