@@ -216,9 +216,9 @@ def main():
         if keys:
             msg = ""
             if buy:
-                msg += "\nSignal_1\n" + "\n".join(buy)
+                msg += "\nBuy\n" + "\n".join(buy)
             if sell:
-                msg += "\nSignal_2\n" + "\n".join(sell)
+                msg += "\nSell\n" + "\n".join(sell)
 
             if send_telegram(msg.strip()):
                 now = datetime.now(pytz.utc)
