@@ -1,0 +1,28 @@
+name: NSE Monitor
+
+on:
+  schedule:
+    - cron: '0/5 4-9 * * 1-5'   # 09:30-15:25 IST, Mon-Fri
+    - cron: '0 10 * * 1-5'      # 15:30 IST, Mon-Fri
+  workflow_dispatch:
+
+jobs:
+  run-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run NSE_Most_Active_Stocks.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python nse_monitor.py
