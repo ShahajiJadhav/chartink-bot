@@ -1,31 +1,39 @@
 name: NSE Monitor
 
 on:
-  schedule:
-    - cron: '0/5 4-9 * * 1-5'
-    - cron: '0 10 * * 1-5'
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+# Restrict default token permissions
+permissions:
+  contents: read
+
+# Prevent overlapping executions that would cause duplicate Telegram alerts
+concurrency:
+  group: nse-monitor-execution
+  cancel-in-progress: true
 
 jobs:
   run-monitor:
     runs-on: ubuntu-latest
+    
+    # GitHub maximum job limit is 360 minutes. 
+    # Warning: This is 15 minutes shorter than the NSE trading day.
+    timeout-minutes: 360 
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests schedule
+          pip install requests
 
       - name: Run NSE monitor
         env:
