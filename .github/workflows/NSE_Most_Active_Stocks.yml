@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip' # This will now succeed because requirements.txt exists
 
       - name: Install dependencies
         run: |
