@@ -270,14 +270,9 @@ class NSEMarketMonitor:
             logger.exception(f"Job failed: {e}")
 
     def run(self) -> None:
-        logger.info("Starting NSE monitor service.")
+        logger.info("Starting NSE monitor single-run job.")
         self._warmup()
         self.execute_job()
-        schedule.every(self.POLL_MINUTES).minutes.do(self.execute_job)
-
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
 
 
 if __name__ == "__main__":
