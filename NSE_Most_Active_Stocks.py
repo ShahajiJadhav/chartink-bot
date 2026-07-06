@@ -1,4 +1,4 @@
-import time
+import time, os
 import json
 import logging
 from pathlib import Path
@@ -22,8 +22,8 @@ class NSEMarketMonitor:
     API_URL = "https://www.nseindia.com/api/live-analysis-most-active-securities"
     STATE_FILE = Path("nse_monitor_state.json")
 
-    TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN"
-    TELEGRAM_CHAT_ID = "YOUR_CHAT_ID"
+    TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+    TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
     POLL_MINUTES = 5
     RANK_BY = "value"  # "value" or "volume"
