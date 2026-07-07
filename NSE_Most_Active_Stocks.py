@@ -203,7 +203,7 @@ class NSEMarketMonitor:
 
     def build_message(self, stocks: List[Dict[str, Any]]) -> str:
         now_ist = self._now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
-        lines = [f"Most Active NSE Stocks ({self.RANK_BY.upper()})", f"Time: {now_ist}"]
+        lines = [f"Most Active NSE Stocks"]
 
         for idx, stock in enumerate(stocks, start=1):
             symbol = str(stock.get("symbol", "N/A")).upper()
@@ -213,9 +213,8 @@ class NSEMarketMonitor:
             traded_volume = int(self._safe_float(stock.get("totalTradedVolume")))
 
             lines.append(
-                f"{idx}. {symbol}\n"
-                f"LTP: {last_price:,.2f} | Change: {pchange:.2f}%\n"
-                f"Value: {traded_value} | Volume: {traded_volume:,}"
+                f"{idx}. {symbol} | Change: {pchange:.2f}%\n"
+                f"LTP: {last_price:,.2f} Value: {traded_value}"
             )
 
         return "\n\n".join(lines)
