@@ -24,7 +24,7 @@ class NSEMarketMonitor:
     RANK_BY = "value"  # "value" or "volume"
     TOP_N = 20
 
-    MARKET_OPEN_IST = dt_time(9, 15)
+    MARKET_OPEN_IST = dt_time(9, 00)
     MARKET_CLOSE_IST = dt_time(15, 30)
     IST_ZONE = ZoneInfo("Asia/Kolkata")
 
