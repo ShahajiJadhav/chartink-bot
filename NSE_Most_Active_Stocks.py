@@ -34,7 +34,7 @@ class NSEMarketMonitor:
         "SBIN",
         "RELIANCE",
         "LIQUIDBEES",
-        "ICICIBANK"
+        "ICICIBANK","ETERNAL","BHARTIARTL","BSE","MCX","TCS","INFY","WIPRO"
     }
 
     def __init__(self):
@@ -217,7 +217,7 @@ class NSEMarketMonitor:
                 f"LTP: {last_price:,.2f} Value: {traded_value}"
             )
 
-        return "\n\n".join(lines)
+        return "\n".join(lines)
 
     def send_telegram(self, message: str) -> bool:
         url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
