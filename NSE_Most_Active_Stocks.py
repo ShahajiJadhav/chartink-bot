@@ -34,7 +34,7 @@ class NSEMarketMonitor:
         "SBIN",
         "RELIANCE",
         "LIQUIDBEES",
-        "ICICIBANK","ETERNAL","BHARTIARTL","BSE","MCX","TCS","INFY","WIPRO"
+        "ICICIBANK","ETERNAL","BHARTIARTL","BSE","MCX","TCS","INFY","WIPRO","KOTAKBANK","M&M","BAJFINANCE","AXISBANK","JIOFIN","ITC","HINDALCO"
     }
 
     def __init__(self):
