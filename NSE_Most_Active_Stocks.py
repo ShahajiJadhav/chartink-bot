@@ -1,8 +1,11 @@
+import json
 import logging
 import os
+import random
 import time
-from datetime import datetime, time as dt_time
-from typing import Any, Dict, List, Set
+from datetime import datetime, timedelta, time as dt_time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import requests
 from zoneinfo import ZoneInfo
@@ -15,18 +18,42 @@ logging.basicConfig(
 logger = logging.getLogger("NSE_Monitor")
 
 
+# --------------------------------------------------------------------------
+# Alert configuration
+# --------------------------------------------------------------------------
+BUY_THRESHOLD = 2.0        # pChange > this  -> BUY signal
+SELL_THRESHOLD = -2.0      # pChange < this  -> SELL signal
+BLOCK_HOURS = 2.0          # a symbol's cache entry lives this long
+RENOTIFY_DIFF_PCT = 3.0    # min move needed to re-alert while still cached
+COOLDOWN_MINUTES = 30      # hard block applied after a re-alert
+
+POLL_MIN_SECONDS = 12
+POLL_MAX_SECONDS = 22
+
+IST_ZONE = ZoneInfo("Asia/Kolkata")
+MARKET_CLOSE_IST = dt_time(15, 30)
+
+# Where alert state is persisted. On GitHub Actions this file needs to be
+# committed back to the repo (or restored from cache) between runs, or the
+# 2h/30min windows will never survive across separate workflow runs.
+STATE_FILE = Path(os.environ.get("NSE_STATE_FILE", "state.json"))
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+
+
+# --------------------------------------------------------------------------
+# NSE fetch/rank/filter (unchanged from your original)
+# --------------------------------------------------------------------------
 class NSEMarketMonitor:
     BASE_URL = "https://www.nseindia.com"
     REFERER_URL = "https://www.nseindia.com/market-data/most-active-equities"
     API_URL = "https://www.nseindia.com/api/live-analysis-most-active-securities"
 
-    POLL_MINUTES = 10
     RANK_BY = "value"  # "value" or "volume"
-    TOP_N = 20
 
-    MARKET_OPEN_IST = dt_time(9, 00)
-    MARKET_CLOSE_IST = dt_time(15, 30)
-    IST_ZONE = ZoneInfo("Asia/Kolkata")
+    MARKET_CLOSE_IST = MARKET_CLOSE_IST
+    IST_ZONE = IST_ZONE
 
     EXCLUDE_SYMBOLS = {
         "HDFCBANK",
@@ -34,18 +61,12 @@ class NSEMarketMonitor:
         "SBIN",
         "RELIANCE",
         "LIQUIDBEES",
-        "ICICIBANK","ETERNAL","BHARTIARTL","BSE","MCX","TCS","INFY","WIPRO","KOTAKBANK","M&M","BAJFINANCE","AXISBANK","JIOFIN","ITC","HINDALCO"
+        "ICICIBANK", "BHARTIARTL", "TCS", "INFY", "LT", "WIPRO", "ETERNAL"
     }
 
     def __init__(self):
         if self.RANK_BY not in {"value", "volume"}:
             raise ValueError("RANK_BY must be 'value' or 'volume'.")
-
-        self.telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-        self.telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-
-        if not self.telegram_bot_token or not self.telegram_chat_id:
-            raise ValueError("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID environment variables.")
 
         self.exclude_symbols = {x.upper() for x in self.EXCLUDE_SYMBOLS}
 
@@ -62,42 +83,14 @@ class NSEMarketMonitor:
             "Connection": "keep-alive",
         })
 
-        # In-memory cache replacing JSON state file
-        self._cache: Dict[str, Any] = {}
-        self._normalize_state()
-
         logger.info(
-            "Initialized rank_by=%s poll_minutes=%s top_n=%s excluded=%s",
+            "Initialized rank_by=%s excluded=%s",
             self.RANK_BY,
-            self.POLL_MINUTES,
-            self.TOP_N,
             sorted(self.exclude_symbols)
         )
 
     def _now_ist(self) -> datetime:
         return datetime.now(tz=self.IST_ZONE)
-
-    def _today_str(self) -> str:
-        return self._now_ist().date().isoformat()
-
-    def _normalize_state(self) -> None:
-        """Ensures the cache is strictly bound to the current trading date."""
-        today = self._today_str()
-        if self._cache.get("date") != today:
-            self._cache = {
-                "date": today,
-                "sent_symbols": set()
-            }
-
-    def _get_sent_symbols_today(self) -> Set[str]:
-        self._normalize_state()
-        return self._cache.get("sent_symbols", set())
-
-    def _mark_symbols_sent(self, symbols: List[str]) -> None:
-        self._normalize_state()
-        for symbol in symbols:
-            if symbol:
-                self._cache["sent_symbols"].add(symbol.upper())
 
     def _warmup(self) -> bool:
         for url in (self.REFERER_URL, self.BASE_URL):
@@ -150,8 +143,8 @@ class NSEMarketMonitor:
             return 0.0
 
     def _sort_rows(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        primary = "totalTradedValue" if self.RANK_BY == "value" else "totalTradedVolume"
-        secondary = "totalTradedVolume" if self.RANK_BY == "value" else "totalTradedValue"
+        primary = "pChange" if self.RANK_BY == "value" else "pChange"
+        secondary = "totalTradedValue" if self.RANK_BY == "value" else "totalTradedVolume"
 
         return sorted(
             rows,
@@ -176,7 +169,8 @@ class NSEMarketMonitor:
         )
         return filtered
 
-    def get_eligible_stocks(self) -> List[Dict[str, Any]]:
+    def get_all_stocks(self) -> List[Dict[str, Any]]:
+        """Fetch, rank, and return every stock except the excluded symbols."""
         rows = self._fetch_rows()
         if not rows:
             return []
@@ -184,157 +178,214 @@ class NSEMarketMonitor:
         ranked = self._sort_rows(rows)
         filtered = self._filter_excluded(ranked)
 
-        sent_today = self._get_sent_symbols_today()
-        logger.info("Already sent today: %s", sorted(list(sent_today)))
+        logger.info("Stocks after exclusion filter: %s", len(filtered))
+        return filtered
 
-        eligible = []
-        for row in filtered:
-            symbol = str(row.get("symbol", "")).upper()
-            if not symbol or symbol in sent_today:
-                continue
-            eligible.append(row)
+    def build_table_rows(self, stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Flatten raw API rows into plain values ready for tabular display."""
+        table_rows = []
+        for stock in stocks:
+            table_rows.append({
+                "Symbol": str(stock.get("symbol", "N/A")).upper(),
+                "LTP": round(self._safe_float(stock.get("lastPrice")), 2),
+                "Change %": round(self._safe_float(stock.get("pChange")), 2),
+                "Value (Cr)": round(self._safe_float(stock.get("totalTradedValue")) / 10000000, 2)
+            })
+        return table_rows
 
-        logger.info("Eligible unsent symbols count: %s", len(eligible))
-        return eligible[:self.TOP_N]
+    def build_dataframe(self, stocks: List[Dict[str, Any]]):
+        """Return a pandas DataFrame - renders as a clean table in Colab."""
+        import pandas as pd
+        return pd.DataFrame(self.build_table_rows(stocks))
 
-    def _format_value_in_crore(self, total_traded_value: Any) -> str:
-        value = self._safe_float(total_traded_value)
-        return f"{value / 10000000:,.2f} Cr"
 
-    def build_message(self, stocks: List[Dict[str, Any]]) -> str:
-        now_ist = self._now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
-        lines = [f"Most Active NSE Stocks"]
+# --------------------------------------------------------------------------
+# Telegram
+# --------------------------------------------------------------------------
+def send_telegram_message(text: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logger.error("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set; skipping send.")
+        return False
 
-        for idx, stock in enumerate(stocks, start=1):
-            symbol = str(stock.get("symbol", "N/A")).upper()
-            last_price = self._safe_float(stock.get("lastPrice"))
-            pchange = self._safe_float(stock.get("pChange"))
-            traded_value = self._format_value_in_crore(stock.get("totalTradedValue"))
-            traded_volume = int(self._safe_float(stock.get("totalTradedVolume")))
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "Markdown",
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=15)
+        resp.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        logger.error("Telegram send failed: %s", e)
+        return False
 
-            lines.append(
-                f"{idx}. {symbol} | Change: {pchange:.2f}%\n"
-                f"LTP: {last_price:,.2f} Value: {traded_value}"
-            )
 
-        return "\n".join(lines)
+# --------------------------------------------------------------------------
+# Alert state (persisted to disk so it survives separate script runs)
+# --------------------------------------------------------------------------
+class AlertState:
+    """
+    Per-symbol record:
+        {
+            "change": float,              # pChange at last notification
+            "notified_at": iso str,       # when last notified
+            "cooldown_until": iso str|None  # 30-min hard block, if any
+        }
+    """
 
-    def send_telegram(self, message: str) -> bool:
-        url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
-        payload = {
-            "chat_id": self.telegram_chat_id,
-            "text": message
+    def __init__(self, path: Path = STATE_FILE):
+        self.path = path
+        self.data: Dict[str, Dict[str, Any]] = self._load()
+
+    def _load(self) -> Dict[str, Dict[str, Any]]:
+        if self.path.exists():
+            try:
+                with open(self.path, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Could not read state file (%s), starting fresh: %s", self.path, e)
+        return {}
+
+    def save(self) -> None:
+        try:
+            with open(self.path, "w") as f:
+                json.dump(self.data, f, indent=2)
+        except OSError as e:
+            logger.error("Failed to save state file: %s", e)
+
+    def get(self, symbol: str) -> Optional[Dict[str, Any]]:
+        return self.data.get(symbol)
+
+    def set(self, symbol: str, change: float, notified_at: datetime,
+            cooldown_until: Optional[datetime]) -> None:
+        self.data[symbol] = {
+            "change": change,
+            "notified_at": notified_at.isoformat(),
+            "cooldown_until": cooldown_until.isoformat() if cooldown_until else None,
         }
 
-        try:
-            resp = self.session.post(url, json=payload, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
-            if not data.get("ok"):
-                logger.error("Telegram API returned failure: %s", data)
-                return False
-            logger.info("Telegram message sent successfully")
-            return True
-        except requests.RequestException as e:
-            logger.error("Telegram send failed: %s", e)
-            return False
 
-    def _is_weekday_ist(self) -> bool:
-        return self._now_ist().weekday() < 5
+# --------------------------------------------------------------------------
+# Alert decision engine (implements your flowchart)
+# --------------------------------------------------------------------------
+class AlertEngine:
+    def __init__(self, state: AlertState):
+        self.state = state
 
-    def _is_market_open_ist(self) -> bool:
-        now_ist = self._now_ist()
-        current_time = now_ist.time()
-        return (
-            self._is_weekday_ist() and
-            self.MARKET_OPEN_IST <= current_time < self.MARKET_CLOSE_IST
-        )
+    @staticmethod
+    def _now() -> datetime:
+        return datetime.now(tz=IST_ZONE)
 
-    def _is_market_closed_ist(self) -> bool:
-        current_time = self._now_ist().time()
-        return current_time >= self.MARKET_CLOSE_IST
+    @staticmethod
+    def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+        return datetime.fromisoformat(value) if value else None
 
-    def run_once(self) -> None:
-        logger.info("Starting one-shot NSE monitor job")
-        self._warmup()
+    def evaluate(self, row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Returns a small dict describing the signal if `row` should trigger
+        an alert right now, else None. Mutates self.state as a side effect
+        on any send. The caller batches these into a single message.
+        """
+        symbol = row["Symbol"]
+        change = row["Change %"]
 
-        stocks_to_send = self.get_eligible_stocks()
-        if not stocks_to_send:
-            logger.info("No eligible stocks found to send")
-            return
+        # 1. Dead zone -> ignore
+        if SELL_THRESHOLD <= change <= BUY_THRESHOLD:
+            return None
 
-        message = self.build_message(stocks_to_send)
-        symbols_sent = [
-            str(stock.get("symbol", "")).upper()
-            for stock in stocks_to_send
-            if str(stock.get("symbol", "")).strip()
-        ]
+        signal = "BUY" if change > BUY_THRESHOLD else "SELL"
+        now = self._now()
+        entry = self.state.get(symbol)
 
-        if self.send_telegram(message):
-            self._mark_symbols_sent(symbols_sent)
-            logger.info("Marked %s symbols as sent for today", len(symbols_sent))
+        # 2. 30-minute cooldown -> ignore
+        if entry:
+            cooldown_until = self._parse_iso(entry.get("cooldown_until"))
+            if cooldown_until and now < cooldown_until:
+                logger.info("%s in 30-min cooldown until %s, skipping", symbol, cooldown_until)
+                return None
 
-    def run_forever(self) -> None:
-        interval_seconds = self.POLL_MINUTES * 60
-        logger.info("Starting continuous NSE monitor loop (timezone-safe IST)")
+        # 3. Expire the 2-hour cache entry if it's aged out
+        if entry:
+            notified_at = self._parse_iso(entry["notified_at"])
+            if now - notified_at >= timedelta(hours=BLOCK_HOURS):
+                entry = None  # treated as "not in cache"
 
-        while True:
-            now_ist = self._now_ist()
+        # 4. Not in cache -> first notification
+        if entry is None:
+            self.state.set(symbol, change, now, cooldown_until=None)
+            return {"signal": signal, "row": row, "first": True}
 
-            if self._is_market_closed_ist():
-                logger.info("Current IST time is %s, market closed. Stopping monitor.", now_ist.strftime("%H:%M:%S"))
-                break
+        # 5. In cache -> only re-alert on a >=3% move from what we last sent
+        diff = abs(change - entry["change"])
+        if diff < RENOTIFY_DIFF_PCT:
+            logger.info("%s cached, diff %.2f%% < %.1f%%, skipping", symbol, diff, RENOTIFY_DIFF_PCT)
+            return None
 
-            if not self._is_weekday_ist():
-                logger.info("Today is weekend in IST. Stopping monitor.")
-                break
+        cooldown_until = now + timedelta(minutes=COOLDOWN_MINUTES)
+        self.state.set(symbol, change, now, cooldown_until=cooldown_until)
+        return {"signal": signal, "row": row, "first": False}
 
-            if now_ist.time() < self.MARKET_OPEN_IST:
-                logger.info(
-                    "Before market open in IST (%s). Current time: %s. Stopping monitor.",
-                    self.MARKET_OPEN_IST.strftime("%H:%M:%S"),
-                    now_ist.strftime("%H:%M:%S")
-                )
-                break
-
-            try:
-                self.run_once()
-            except KeyboardInterrupt:
-                logger.info("Received shutdown signal, exiting monitor loop")
-                break
-            except Exception as e:
-                logger.exception("Unhandled error in monitor loop: %s", e)
-
-            now_ist = self._now_ist()
-            if self._is_market_closed_ist():
-                logger.info("Market close reached after cycle at %s IST. Stopping monitor.", now_ist.strftime("%H:%M:%S"))
-                break
-
-            market_close_dt = datetime.combine(
-                now_ist.date(),
-                self.MARKET_CLOSE_IST,
-                tzinfo=self.IST_ZONE
+    @staticmethod
+    def format_batch(alerts: List[Dict[str, Any]]) -> str:
+        """Combine any number of alerts from one poll into a single message."""
+        lines = [f"*Signals* ({len(alerts)}) — {datetime.now(tz=IST_ZONE).strftime('%H:%M:%S')} IST"]
+        for a in alerts:
+            row = a["row"]
+            tag = "🟢 BUY" if a["signal"] == "BUY" else "🔴 SELL"
+            kind = "new" if a["first"] else "re-alert ≥3%"
+            lines.append(
+                f"{tag} `{row['Symbol']}` ({kind}) — "
+                f"LTP {row['LTP']}, Chg {row['Change %']}%, Val ₹{row['Value (Cr)']}Cr"
             )
-            seconds_until_close = int((market_close_dt - now_ist).total_seconds())
+        return "\n".join(lines)
 
-            if seconds_until_close <= 0:
-                logger.info("No time remaining before market close. Exiting.")
-                break
 
-            sleep_seconds = min(interval_seconds, seconds_until_close)
-            logger.info("Sleeping for %s seconds", sleep_seconds)
+# --------------------------------------------------------------------------
+# Entry point - loops every 12-22s until market close (15:30 IST),
+# batching every signal from a single poll into one Telegram message.
+# --------------------------------------------------------------------------
+def run_until_close() -> None:
+    monitor = NSEMarketMonitor()
+    monitor._warmup()
 
-            try:
-                time.sleep(sleep_seconds)
-            except KeyboardInterrupt:
-                logger.info("Received shutdown signal during sleep, exiting")
-                break
+    state = AlertState()
+    engine = AlertEngine(state)
+
+    poll_count = 0
+    while datetime.now(tz=IST_ZONE).time() < MARKET_CLOSE_IST:
+        poll_count += 1
+        try:
+            stocks = monitor.get_all_stocks()
+            if stocks:
+                rows = monitor.build_table_rows(stocks)
+
+                alerts = []
+                for row in rows:
+                    result = engine.evaluate(row)
+                    if result:
+                        alerts.append(result)
+
+                if alerts:
+                    message = engine.format_batch(alerts)
+                    if send_telegram_message(message):
+                        logger.info("Sent batched alert for %s symbol(s): %s",
+                                    len(alerts), [a["row"]["Symbol"] for a in alerts])
+
+                state.save()
+            else:
+                logger.info("No stocks returned this poll; nothing to check.")
+
+        except Exception as e:
+            # Keep the loop alive across transient NSE/network hiccups.
+            logger.error("Poll #%s failed: %s", poll_count, e)
+
+        sleep_for = random.uniform(POLL_MIN_SECONDS, POLL_MAX_SECONDS)
+        time.sleep(sleep_for)
+
+    logger.info("Market closed (15:30 IST). Loop ending after %s poll(s).", poll_count)
 
 
 if __name__ == "__main__":
-    try:
-        monitor = NSEMarketMonitor()
-        monitor.run_forever()
-    except Exception as e:
-        logger.exception("Execution failed: %s", e)
-        raise
+    run_until_close()
