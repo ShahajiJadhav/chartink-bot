@@ -31,7 +31,7 @@ POLL_MIN_SECONDS = 12
 POLL_MAX_SECONDS = 22
 
 IST_ZONE = ZoneInfo("Asia/Kolkata")
-MARKET_CLOSE_IST = dt_time(23, 30)
+MARKET_CLOSE_IST = dt_time(15, 30)
 
 # Where alert state is persisted. On GitHub Actions this file needs to be
 # committed back to the repo (or restored from cache) between runs, or the
