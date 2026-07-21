@@ -36,7 +36,7 @@ jobs:
       - name: Run Chartink bots
         # run: python chartink_telegram_signal.py
         run: |
-          python chartink_telegram_signal.py &
+          python chartink_most_active_stocks.py &
           python chartink_telegram_signal_1_scanners.py &
           wait
 
