@@ -1,0 +1,35 @@
+name: Chartink Most Active Stocks Monitor
+
+on:
+  schedule:
+    # 9:10 AM IST, Mon-Fri (IST = UTC+5:30). Cron runs in UTC.
+    - cron: "40 3 * * 1-5"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+jobs:
+  monitor:
+    runs-on: self-hosted   # register a runner on your own machine/VM first:
+                            # Settings -> Actions -> Runners -> New self-hosted runner
+    timeout-minutes: 420   # generous ceiling; the script's own 15:30 IST check
+                            # is what actually ends the loop, not this
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Chartink monitor
+        env:
+          CHARTINK_COOKIE_RAW: ${{ secrets.CHARTINK_COOKIE_RAW }}
+          CHARTINK_CSRF_TOKEN: ${{ secrets.CHARTINK_CSRF_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CHARTINK_STATE_FILE: .cache/chartink_state.json
+        run: python chartink_monitor.py
