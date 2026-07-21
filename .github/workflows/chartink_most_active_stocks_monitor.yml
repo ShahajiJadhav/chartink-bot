@@ -30,4 +30,4 @@ jobs:
           pip install requests
 
       - name: Run Chartink monitor
-        run: python chartink_monitor.py
+        run: python chartink_most_active_stocks.py
