@@ -25,7 +25,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # ---------------- SINGLE PAYLOAD ----------------
 # signal_payload = {"scan_clause": '''( {1339018} (  abs(  [-1] 5 minute close -  [-1] 5 minute open ) >  [-1] 5 minute close *  0.01 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute close *  0.008 and  abs(  [-1] 5 minute close -  [-1] 5 minute open ) <  abs(  [-1] 5 minute high -  [-1] 5 minute low ) *  0.4 ) )'''}
-signal_payload = {"scan_clause": '''( {1339018} (  [0] 5 minute volume *  [0] 5 minute "high+low/2" >  600000000 and  abs(  [0] 5 minute close -  [0] 5 minute open ) >  [0] 5 minute low *  0.013 and( {cash} (  [0] 5 minute close !=  [=1] 5 minute close and  [0] 5 minute close !=  [=2] 5 minute close and  [0] 5 minute close !=  [=-1] 5 minute close and  [0] 5 minute close !=  [=-2] 5 minute close ) ) and( {cash} (  [-1] 5 minute max( 12 ,  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) ) -  [-1] 5 minute min( 12 ,  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) ) <  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) *  0.005 or  [-1] 5 minute max( 12 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) -  [-1] 5 minute min( 12 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) <  [-1] 5 minute ema(  [0] 5 minute close , 5 ) *  0.005 or  [0] 5 minute max( 12 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) -  [0] 5 minute min( 12 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) <  [0] 5 minute ema(  [0] 5 minute close , 5 ) *  0.005 or  [0] 5 minute max( 12 ,  [0] 5 minute ema(  [-1] 5 minute close , 5 ) ) -  [0] 5 minute min( 12 ,  [0] 5 minute ema(  [-1] 5 minute close , 5 ) ) <  [0] 5 minute ema(  [-1] 5 minute close , 5 ) *  0.005 ) ) ) )'''}
+signal_payload = {"scan_clause": '''( {cash} (  abs(  [0] 5 minute open -  [0] 5 minute close ) <  (  [0] 5 minute high -  [0] 5 minute low ) *  0.6 and  [0] 5 minute volume *  [0] 5 minute "high+low/2" >  500000000 and  [0] 5 minute high -  [0] 5 minute low >  [0] 5 minute low *  0.023 and( {cash} (  [0] 5 minute close !=  [=1] 5 minute close and  [0] 5 minute close !=  [=2] 5 minute close and  [0] 5 minute close !=  [=3] 5 minute close and  [0] 5 minute close !=  [=-1] 5 minute close and  [0] 5 minute close !=  [=-2] 5 minute close and  [0] 5 minute close !=  [=-3] 5 minute close ) ) and( {cash} (  [-1] 5 minute max( 6 ,  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) ) -  [-1] 5 minute min( 6 ,  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) ) <  [-1] 5 minute ema(  [-1] 5 minute close , 5 ) *  0.01 or  [-1] 5 minute max( 6 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) -  [-1] 5 minute min( 6 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) <  [-1] 5 minute ema(  [0] 5 minute close , 5 ) *  0.01 or  [0] 5 minute max( 6 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) -  [0] 5 minute min( 6 ,  [0] 5 minute ema(  [0] 5 minute close , 5 ) ) <  [0] 5 minute ema(  [0] 5 minute close , 5 ) *  0.01 or  [0] 5 minute max( 6 ,  [0] 5 minute ema(  [-1] 5 minute close , 5 ) ) -  [0] 5 minute min( 6 ,  [0] 5 minute ema(  [-1] 5 minute close , 5 ) ) <  [0] 5 minute ema(  [-1] 5 minute close , 5 ) *  0.01 ) ) ) )'''}
 
 HOME = Path.home()
 
@@ -242,7 +242,7 @@ def main_loop():
                 new_keys.append(key)
 
             if msgs:
-                text = "📢 <u>Signal 3</u>\n" + "\n".join(msgs)
+                text = "📢 <u>Solid Hammer</u>\n" + "\n".join(msgs)
 
                 if send_telegram(text):
                     now = datetime.now(pytz.utc)
